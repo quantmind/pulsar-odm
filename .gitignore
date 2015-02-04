@@ -1,0 +1,8 @@
+*.pyc
+.DS_Store
+__pycache__
+*.log
+
+#python and eclipse
+.project
+.pydevproject
