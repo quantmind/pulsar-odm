@@ -13,7 +13,7 @@ class_prepared = Event()
 
 def do_pending_lookups(model, **kwargs):
     """Handle any pending relations to the sending model.
-Sent from class_prepared."""
+    Sent from class_prepared."""
     key = (model._meta.app_label, model._meta.name)
     for callback in pending_lookups.pop(key, []):
         callback(model)

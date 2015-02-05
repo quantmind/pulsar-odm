@@ -464,9 +464,6 @@ class Model(metaclass=ModelType):
         pk.register_with_model('id', through)
 
 
-PyModel = Model
-
-
 def create_model(name, **params):
     '''Create a :class:`.Model` class.
 
@@ -478,18 +475,11 @@ def create_model(name, **params):
     return ModelType(name, (Model,), params)
 
 
-if ispy3k:
-    def mstr(s):
-        if isinstance(s, bytes):
-            return s.decode('utf-8')
-        elif not isinstance(s, str):
-            return str(s)
-        else:
-            return s
+def mstr(s):
+    if isinstance(s, bytes):
+        return s.decode('utf-8')
+    elif not isinstance(s, str):
+        return str(s)
+    else:
+        return s
 
-else:
-    def mstr(s):
-        if isinstance(s, (bytes, unicode)):
-            return s
-        else:
-            return str(s)

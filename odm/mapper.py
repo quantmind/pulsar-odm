@@ -1,7 +1,6 @@
 from inspect import ismodule
 
 from pulsar import EventHandler, multi_async, task
-from pulsar.utils.pep import native_str
 from pulsar.utils.importer import import_module
 
 from .transaction import Transaction, ModelDictionary
@@ -17,9 +16,9 @@ __all__ = ['Mapper', 'Manager', 'Model']
 class Mapper(EventHandler):
     '''A mapper is a mapping of :class:`.Model` to a :class:`.Manager`.
 
-    The :class:`.Manager` are registered with a :class:`.Store`::
+    A :class:`.Manager` is registered with a :class:`.Store`::
 
-        from asyncstore import odm
+        import odm
 
         models = odm.Mapper(store)
         models.register(MyModel, ...)
@@ -330,7 +329,6 @@ class Mapper(EventHandler):
         '''
         if exclude is None:
             exclude = set()
-        application = native_str(application)
         if ismodule(application) or isinstance(application, str):
             if ismodule(application):
                 mod, application = application, application.__name__
