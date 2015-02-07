@@ -118,7 +118,7 @@ class CouchDBStore(CouchDBMixin, Store):
         return self.request('post', dbname, '_bulk_docs', docs=documents,
                             new_edits=new_edits)
 
-    # ODM
+    # Tables
     def create_table(self, model, remove_existing=False):
         # Build views
         meta = model._meta

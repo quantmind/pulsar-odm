@@ -1,11 +1,10 @@
 '''RethinkDB backend'''
-import struct
 from functools import partial
 
 try:
     import rethinkdb
-    from rethinkdb import ql2_pb2 as p
-    from .protocol import Connection, Consumer
+    from rethinkdb import ast
+    from .protocol import Connection, Consumer, start_query
 except ImportError:
     rethinkdb = None
 
@@ -15,7 +14,7 @@ import odm
 
 
 class RethinkDB(odm.RemoteStore):
-    '''RethinkDB data store
+    '''RethinkDB asynchronous data store
     '''
     protocol_factory = partial(Connection, Consumer)
 
@@ -23,27 +22,58 @@ class RethinkDB(odm.RemoteStore):
     def registered(self):
         return rethinkdb is not None
 
-    def create_database(self, dbname=None, **kw):
+    # Database API
+    def database_create(self, dbname=None, **kw):
         '''Create a new database
         '''
-        dbname = dbname or self.database
-        connection = yield from self._pool.connect()
-        yield from ast.DbCreate(dbname).run(connection)
-        self._database = dbname
+        term = ast.DbCreate(dbname or self.database)
+        result = yield from self.execute(term, **kw)
+        assert result['dbs_created'] == 1
+        self.database = result['config_changes'][0]['new_val']['name']
+        return result
 
-    def create_table(self, dbname=None, **kw):
-        pass
+    def database_all(self):
+        '''The list of all databases
+        '''
+        return self.execute(ast.DbList())
 
-    def execute(self, *args, **options):
+    def database_drop(self, dbname=None, **kw):
+        return self.execute(ast.DbDrop(dbname or self.database), **kw)
+
+    # Table API
+    def table_create(self, table_name, **kw):
+        '''Create a new table
+        '''
+        return self.execute(ast.TableCreateTL(table_name), **kw)
+
+    def table_all(self):
+        '''The list of all tables in the current :attr:`~Store.database`
+        '''
+        return self.execute(ast.TableListTL())
+
+    def table_drop(self, table_name, **kw):
+        '''Create a new table
+        '''
+        return self.execute(ast.TableDropTL(table_name), **kw)
+
+    # Execute a command
+    def execute(self, term, dbname=None, **options):
         connection = yield from self._pool.connect()
         with connection:
-            result = yield connection.execute(*args, **options)
-            if isinstance(result, ResponseError):
-                raise result.exception
-            coroutine_return(result)
+            consumer = connection.current_consumer()
+            db = dbname or self.database
+            options['db'] = ast.DB(dbname or self.database)
+            query = start_query(term, connection.requests_processed, options)
+            consumer.start(query)
+            response = yield from consumer.on_finished
+            return response
 
     def connect(self):
-        '''Create a new connection to RethinkDB'''
+        '''Create a new connection to RethinkDB server.
+
+        This method should not be called directly unless a detached connection
+        from the connection pool is needed.
+        '''
         protocol_factory = self.create_protocol
         host, port = self._host
         transport, connection = yield from self._loop.create_connection(

@@ -1,6 +1,5 @@
 from pulsar import (EventHandler, InvalidOperation, chain_future, multi_async,
                     task)
-from pulsar.utils.pep import iteritems
 
 from .model import Model
 
