@@ -3,11 +3,12 @@ from inspect import ismodule
 from pulsar import EventHandler, multi_async, task
 from pulsar.utils.importer import import_module
 
+from odm import create_store
+
 from .transaction import Transaction, ModelDictionary
 from .model import ModelType, Model
 from .manager import Manager
 from . import query
-from ..store import create_store
 
 
 __all__ = ['Mapper', 'Manager', 'Model']

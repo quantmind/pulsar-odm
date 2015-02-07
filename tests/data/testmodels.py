@@ -1,7 +1,6 @@
-__test__ = False
 from datetime import datetime, timedelta
 
-from pulsar.apps.data import odm
+import odm
 
 
 default_expiry = lambda: datetime.now() + timedelta(days=7)
@@ -16,12 +15,10 @@ class User(odm.Model):
     is_active = odm.BooleanField(default=True)
     can_login = odm.BooleanField(default=True)
     is_superuser = odm.BooleanField(default=False)
-    data = odm.JSONField()
 
 
 class Session(odm.Model):
     '''A session model with a hash table as data store.'''
-    data = odm.JSONField()
     expiry = odm.DateTimeField(default=default_expiry)
     user = odm.ForeignKey(User)
 

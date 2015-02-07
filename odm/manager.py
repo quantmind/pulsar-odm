@@ -1,7 +1,8 @@
 from pulsar import Event, chain_future, add_callback, task
+from pulsar.apps.data import Command
 
-from .query import AbstractQuery, Query, QueryError, ModelNotFound
-from ..store import Command
+from .query import AbstractQuery, Query, OdmError, QueryError, ModelNotFound
+from .errors import *
 
 
 RECURSIVE_RELATIONSHIP_CONSTANT = 'self'
@@ -20,14 +21,6 @@ def do_pending_lookups(model, **kwargs):
 
 
 class_prepared.bind(do_pending_lookups)
-
-
-class OdmError(RuntimeError):
-    pass
-
-
-class ManyToManyError(OdmError):
-    pass
 
 
 class Manager(AbstractQuery):

@@ -6,16 +6,12 @@ from dateutil.parser import parse as dateparser
 
 from pulsar.utils.html import NOTHING, escape
 from pulsar.utils.pep import to_string
+from pulsar.apps.wsgi import Html
 
-from lux import Html
-from lux.utils.files import File
-
-from .options import Options, OptionGroup
+from .errors import *
 
 
-__all__ = ['FieldError',
-           'ValidationError',
-           'field_widget',
+__all__ = ['field_widget',
            'Field',
            'CharField',
            'TextField',
@@ -27,25 +23,8 @@ __all__ = ['FieldError',
            'FloatField',
            'EmailField',
            'FileField',
-           'HiddenField',
            'PasswordField',
            'UrlField']
-
-
-class FieldError(Exception):
-    pass
-
-
-class ValidationError(ValueError):
-    '''Raised when a field value does not validate.
-
-    .. attribute:: field_name
-
-        Name of the :class:`Field` which this error refers to.
-    '''
-    def __init__(self, msg='', field_name=None):
-        super(ValidationError, self).__init__(msg)
-        self.field_name = field_name
 
 
 standard_validation_error = '{0} is required'
@@ -55,7 +34,7 @@ standard_wrong_value_message = \
 
 def field_widget(tag, **defaults):
     '''Returns an :class:`Html` factory function for ``tag`` and a given
-dictionary of ``defaults`` parameters. For example::
+    dictionary of ``defaults`` parameters. For example::
 
     >>> input_factory = field_widget('input', type='text')
     >>> html = input_factory(value='bla')
@@ -68,7 +47,38 @@ dictionary of ``defaults`` parameters. For example::
     return html_input
 
 
-class Field(object):
+class ModelMixin(object):
+    to_python = None
+
+    def register_with_model(self, name, model):
+        '''Called during the creation of a the :class:`StdModel`
+        class when :class:`Metaclass` is initialised. It fills
+        :attr:`Field.name` and :attr:`Field.model`. This is an internal
+        function users should never call.'''
+        assert not self.name, 'Field %s is already registered' % self
+        self.name = name
+        self.store_name = self.get_store_name()
+        self._meta = meta = model._meta
+        meta.dfields[name] = self
+        if self.to_python:
+            meta.converters[name] = self.to_python
+        if self.primary_key:
+            meta.pk = self
+        self.add_to_fields()
+
+    def add_to_fields(self):
+        '''Add this :class:`Field` to the fields of :attr:`model`.
+        '''
+        self._meta.scalarfields.append(self)
+        if self.index:
+            self._meta.indexes.append(self)
+
+    def get_store_name(self):
+        '''Generate the :attr:`store_name` at runtime'''
+        return self.name
+
+
+class Field(ModelMixin):
     '''Base class for all fields.
     Field are specified as attribute of a form, for example::
 
@@ -130,6 +140,8 @@ class Field(object):
 
         dictionary of attributes.
     '''
+    primary_key = False
+    index = False
     default = None
     widget = None
     required = True
@@ -138,22 +150,27 @@ class Field(object):
     wrong_value_message = standard_wrong_value_message
     attrs = None
 
-    def __init__(self,
-                 required=None,
-                 default=None,
-                 initial=None,
-                 validation_error=None,
-                 help_text=None,
-                 label=None,
-                 widget=None,
-                 widget_attrs=None,
-                 attrname=None,
-                 wrong_value_message=None,
+    def __init__(self, unique=False, primary_key=None, required=None,
+                 index=False, default=None, initial=None,
+                 validation_error=None, help_text=None,
+                 label=None, widget=None, widget_attrs=None,
+                 attrname=None, wrong_value_message=None,
                  **kwargs):
         self.name = attrname
+        self.primary_key = (self.primary_key if primary_key is None else
+                            primary_key)
         self.default = default if default is not None else self.default
         self.initial = initial
         self.required = required if required is not None else self.required
+        index = index if index is not None else self.index
+        if self.primary_key:
+            self.unique = True
+            self.required = True
+            self.index = True
+        else:
+            self.unique = unique
+            self.required = required
+            self.index = True if unique else index
         self.validation_error = (validation_error or self.validation_error or
                                  standard_validation_error)
         if wrong_value_message:

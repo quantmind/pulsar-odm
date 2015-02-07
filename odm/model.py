@@ -4,12 +4,12 @@ from copy import copy
 from base64 import b64encode
 from collections import Mapping, OrderedDict
 
-from .manager import class_prepared, makeManyToManyRelatedManager
-from .fields import (Field, AutoIdField, ForeignKey, CompositeIdField,
-                     FieldError, NONE_EMPTY)
-from .query import OdmError
+from pulsar.utils.html import NOTHING
+from pulsar.apps.data import REV_KEY
 
-from ..store import Command, REV_KEY
+from .manager import class_prepared, makeManyToManyRelatedManager, Command
+from .relfields import Field, ForeignKey, CompositeIdField
+from .errors import *
 
 
 primary_keys = ('id', 'ID', 'pk', 'PK')
@@ -54,6 +54,10 @@ def make_app_label(new_class, app_label=None):
         except:
             app_label = ''
     return app_label
+
+
+class AutoIdField(Field):
+    primary_key = True
 
 
 class ModelMeta(object):
@@ -213,7 +217,7 @@ class ModelMeta(object):
             for field in fields.values():
                 name = field.store_name
                 value = field.to_store(instance.get_raw(name), store)
-                if ((value in NONE_EMPTY) and field.required and
+                if ((value in NOTHING) and field.required and
                         not isinstance(field, AutoIdField)):
                     raise FieldError("Field '%s' is required for '%s'." %
                                      (name, self))
