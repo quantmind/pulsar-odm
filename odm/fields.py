@@ -77,6 +77,9 @@ class ModelMixin(object):
         '''Generate the :attr:`store_name` at runtime'''
         return self.name
 
+    def get_value(self, model, value):
+        return value
+
 
 class Field(ModelMixin):
     '''Base class for all fields.
@@ -157,6 +160,7 @@ class Field(ModelMixin):
                  attrname=None, wrong_value_message=None,
                  **kwargs):
         self.name = attrname
+        self.foreign_keys = ()
         self.primary_key = (self.primary_key if primary_key is None else
                             primary_key)
         self.default = default if default is not None else self.default

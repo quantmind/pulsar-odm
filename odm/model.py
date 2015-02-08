@@ -5,6 +5,7 @@ from base64 import b64encode
 from collections import Mapping, OrderedDict
 
 from pulsar.utils.html import NOTHING
+from pulsar.utils.structures import mapping_iterator
 from pulsar.apps.data import REV_KEY
 
 from .manager import class_prepared, makeManyToManyRelatedManager, Command
@@ -240,7 +241,7 @@ class ModelMeta(object):
                 yield name, value
 
 
-class ModelType(type(dict)):
+class ModelType(type):
     '''Model metaclass'''
     def __new__(cls, name, bases, attrs):
         meta = attrs.pop('Meta', None)
@@ -252,7 +253,7 @@ class ModelType(type(dict)):
         cls.extend_meta(meta, attrs)
         fields = get_fields(bases, attrs)
         attrs['__slots__'] = ('_access_cache', '_modified')
-        new_class = super(ModelType, cls).__new__(cls, name, bases, attrs)
+        new_class = super().__new__(cls, name, bases, attrs)
         ModelMeta(new_class, fields, **meta)
         class_prepared.fire(new_class)
         return new_class
@@ -264,7 +265,7 @@ class ModelType(type(dict)):
                 meta[name] = attrs.pop(name)
 
 
-class Model(metaclass=ModelType):
+class Model(dict, metaclass=ModelType):
     '''A model is a python ``dict`` which represents an item/row
     in a data-store collection/table.
 
@@ -298,12 +299,12 @@ class Model(metaclass=ModelType):
         field = mstr(field)
         if field in primary_keys:
             field = self._meta.pkname()
-        value = super(Model, self).__getitem__(field)
+        value = super().__getitem__(field)
         if field not in self._access_cache:
             self._access_cache.add(field)
             if field in self._meta.converters:
                 value = self._meta.converters[field](value)
-                super(Model, self).__setitem__(field, value)
+                super().__setitem__(field, value)
         return value
 
     def __setitem__(self, field, value):
@@ -341,7 +342,7 @@ class Model(metaclass=ModelType):
         if modify:
             self[field] = value
         else:
-            super(Model, self).__setitem__(field, value)
+            super().__setitem__(field, value)
 
     def get_raw(self, field, default=None):
         '''Get the raw value at ``field``
@@ -349,18 +350,18 @@ class Model(metaclass=ModelType):
         This function does not apply field conversion.
         '''
         try:
-            return super(Model, self).__getitem__(field)
+            return super().__getitem__(field)
         except KeyError:
             return default
 
     def update(self, *args, **kwargs):
         if len(args) == 1:
             iterable = args[0]
-            super(Model, self).update(self._update_modify(iterable))
+            super().update(self._update_modify(iterable))
         elif args:
             raise TypeError('expected at most 1 arguments, got %s' % len(args))
         if kwargs:
-            super(Model, self).update(self._update_modify(kwargs))
+            super().update(self._update_modify(kwargs))
 
     def to_json(self):
         '''Return a JSON serialisable dictionary representation.
@@ -404,9 +405,7 @@ class Model(metaclass=ModelType):
                         yield key, value
 
     def _update_modify(self, iterable):
-        if isinstance(iterable, Mapping):
-            iterable = iteritems(iterable)
-        for field, value in iterable:
+        for field, value in mapping_iterator(iterable):
             yield self._get_field_value(field, value)
 
     def _get_field_value(self, field, value):
@@ -421,7 +420,7 @@ class Model(metaclass=ModelType):
             if self._modified is not None:
                 self._access_cache.discard(field)
                 if field in self:
-                    if super(Model, self).__getitem__(field) != value:
+                    if super().__getitem__(field) != value:
                         self._modified.add(field)
                 else:
                     self._modified.add(field)

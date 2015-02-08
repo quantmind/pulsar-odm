@@ -1,9 +1,16 @@
+import unittest
+import string
 from datetime import datetime, timedelta
+
+from pulsar.apps.test import random_string
 
 import odm
 
 
 default_expiry = lambda: datetime.now() + timedelta(days=7)
+
+randomname = lambda : random_string(min_len=8, max_len=8,
+                                    characters=string.ascii_letters)
 
 
 class User(odm.Model):
@@ -29,22 +36,39 @@ class Blog(odm.Model):
     body = odm.CharField()
 
 
-class StoreTest(object):
+class OdmTests(unittest.TestCase):
+    models = (User, Session, Blog)
 
     @classmethod
-    def name(cls, name):
-        '''A modified name with the execution id
-        '''
-        return ('test_%s_%s' % (cls.cfg.exc_id, name)).lower()
-
-    @classmethod
-    def mapper(cls, *models, **kw):
+    def create_mapper(cls, **kw):
         '''Create a mapper for models'''
         mapper = odm.Mapper(cls.store)
-        for model in models:
+        for model in cls.models:
             mapper.register(model)
         return mapper
 
     @classmethod
-    def create_store(cls, **kwargs):
-        raise NotImplementedError
+    def setUpClass(cls):
+        cls.dbname = randomname()
+        cls.store = cls.create_store()
+        yield from cls.store.database_create(cls.dbname)
+        cls.mapper = cls.create_mapper()
+
+    @classmethod
+    def tearDownClass(cls):
+        yield from cls.store.database_drop()
+
+    def test_mapper(self):
+        mapper = self.mapper
+        self.assertTrue(mapper)
+        self.assertEqual(len(mapper), 3)
+        self.assertEqual(mapper.user, mapper[User])
+        managers = list(mapper)
+        self.assertEqual(len(managers), 3)
+        for manager in managers:
+            self.assertIsInstance(manager, odm.Manager)
+        self.assertEqual(mapper.default_store, self.store)
+        self.assertFalse(mapper.valid_model({}))
+        self.assertTrue(User in mapper)
+        self.assertTrue(User._meta in mapper)
+        self.assertTrue(str(mapper))

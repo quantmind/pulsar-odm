@@ -5,7 +5,7 @@ try:
     import rethinkdb
     from rethinkdb import ast
     from .protocol import Connection, Consumer, start_query
-except ImportError:
+except ImportError:     # pragma    nocover
     rethinkdb = None
 
 from pulsar import Pool

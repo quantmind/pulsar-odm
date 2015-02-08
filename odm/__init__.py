@@ -8,7 +8,8 @@ from .errors import *
 from .fields import *
 from .relfields import *
 from .manager import Manager
-from .model import Model
+from .model import Model, create_model
+from .mapper import Mapper
 from . import backends
 
 __version__ = get_version(VERSION)

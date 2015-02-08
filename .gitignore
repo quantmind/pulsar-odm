@@ -4,5 +4,7 @@ __pycache__
 *.log
 
 #python and eclipse
+.coverage
 .project
 .pydevproject
+htmlcov

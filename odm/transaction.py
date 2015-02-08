@@ -1,12 +1,7 @@
 from pulsar import (EventHandler, InvalidOperation, chain_future, multi_async,
                     task)
 
-from .model import Model
-
-from ..store import Command
-
-
-__all__ = ['ModelDictionary']
+from .model import Model, Command
 
 
 class ModelDictionary(dict):

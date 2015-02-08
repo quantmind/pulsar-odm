@@ -1,7 +1,7 @@
 from inspect import ismodule
+from importlib import import_module
 
 from pulsar import EventHandler, multi_async, task
-from pulsar.utils.importer import import_module
 
 from odm import create_store
 
@@ -9,9 +9,6 @@ from .transaction import Transaction, ModelDictionary
 from .model import ModelType, Model
 from .manager import Manager
 from . import query
-
-
-__all__ = ['Mapper', 'Manager', 'Model']
 
 
 class Mapper(EventHandler):
@@ -73,11 +70,6 @@ class Mapper(EventHandler):
         return self._default_store
 
     @property
-    def registered_models(self):
-        '''List of registered :class:`.Model`.'''
-        return list(self._registered_models)
-
-    @property
     def search_engine(self):
         '''The :class:`.SearchEngine` for this :class:`.Mapper`.
 
@@ -98,7 +90,10 @@ class Mapper(EventHandler):
         return model in self._registered_models
 
     def __iter__(self):
-        return iter(self._registered_models)
+        return iter(self._registered_models.values())
+
+    def __len__(self):
+        return len(self._registered_models)
 
     def __getitem__(self, model):
         return self._registered_models[model]
@@ -254,18 +249,14 @@ class Mapper(EventHandler):
         return list(self._register_applications(applications, models,
                                                 stores))
 
-    @task
     def search(self, *kw):
         raise NotImplementedError
 
-    @task
     def create_tables(self, remove_existing=False):
         '''Loop though :attr:`registered_models` and issue the
         :meth:`.Manager.create_table` method.'''
-        executed = []
-        for manager in self._registered_models.values():
-            executed.append(manager.create_table(remove_existing))
-        return multi_async(executed, loop=self._loop)
+        for manager in self:
+            yield from manager.create_table(remove_existing)
 
     @task
     def drop_tables(self):
