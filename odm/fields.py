@@ -135,7 +135,7 @@ class Field(ModelMixin):
 
     .. attribute:: widget
 
-        The :class:`djpcms.html.WidgetMaker` for this field.
+        Factory of :class:`~pulsar.apps.wsgi.Html` objects.
 
         Default: ``None``.
 
@@ -256,11 +256,14 @@ class Field(ModelMixin):
             initial = initial(form)
         return initial
 
-    def get_default(self, bfield):
+    def get_default(self, bfield=None):
         default = self.default
         if hasattr(default, '__call__'):
             default = default(bfield)
         return default
+
+    def to_store(self, value, store=None):
+        return self.get_default() if value in NOTHING else value
 
     def model(self):
         return None

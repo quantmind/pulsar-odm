@@ -104,14 +104,19 @@ class Manager(AbstractQuery):
         '''
         return self._store.create_model(self, *args, **kwargs)
 
-    @task
-    def create_table(self, remove_existing=False):
+    def table_create(self, remove_existing=False):
         '''Create the table/collection for the :attr:`_model`
         '''
-        yield self._store.create_table(self._model,
-                                       remove_existing=remove_existing)
+        list = yield from self._store.table_all()
+        tablename = self._meta.table_name
+        if list and tablename in list:
+            if remove_existing:
+                yield from self._store.table_drop(tablename)
+                yield from self._store.table_create(tablename)
+        else:
+            yield from self._store.table_create(tablename)
         if self._mapper.search_engine:
-            yield self._mapper.search_engine.create_table(self)
+            yield from self._mapper.search_engine.create_table(self)
 
     def drop_table(self):
         '''Drop the table/collection for the :attr:`_model`

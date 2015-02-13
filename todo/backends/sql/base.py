@@ -4,7 +4,6 @@ from sqlalchemy.orm import sessionmaker
 
 from pulsar.apps.data import Store, register_store
 from pulsar.apps.greenio import green_task
-from pulsar.utils.pep import itervalues
 
 
 Base = declarative_base()
@@ -52,7 +51,7 @@ class SqlStore(Store):
         '''Execute a ``transaction``
         '''
         transaction.commit()
-        return list(itervalues(transaction.identity_map))
+        return list(transaction.identity_map.values())
     # INTERNALS
 
     def sql_model(self, model):

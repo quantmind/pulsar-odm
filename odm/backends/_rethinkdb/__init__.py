@@ -1,5 +1,6 @@
 '''RethinkDB backend'''
 from functools import partial
+from collections import OrderedDict
 
 try:
     import rethinkdb
@@ -11,6 +12,8 @@ except ImportError:     # pragma    nocover
 from pulsar import Pool
 
 import odm
+
+Command = odm.Command
 
 
 class RethinkDB(odm.RemoteStore):
@@ -56,6 +59,34 @@ class RethinkDB(odm.RemoteStore):
         '''
         return self.execute(ast.TableDropTL(table_name), **kw)
 
+    # Transaction
+    def execute_transaction(self, transaction):
+        updates = OrderedDict()
+        inserts = OrderedDict()
+        for command in transaction.commands:
+            action = command.action
+            if not action:
+                raise NotImplementedError
+            else:
+                model = command.args
+                table_name = model._meta.table_name
+                data = dict(self.model_data(model, action))
+                group = inserts if action == Command.INSERT else updates
+                if table_name not in group:
+                    group[table_name] = [], []
+                group[table_name][0].append(data)
+                group[table_name][1].append(model)
+        #
+        for table, docs_models in inserts.items():
+            executed = yield from self.update_documents(table, docs_models[0])
+
+            errors = []
+            for key, model in zip(executed['generated_keys'],
+                                  docs_models[1]):
+                model['id'] = key
+                model['_rev'] = key
+                model._modified.clear()
+
     # Execute a command
     def execute(self, term, dbname=None, **options):
         connection = yield from self._pool.connect()
@@ -82,6 +113,12 @@ class RethinkDB(odm.RemoteStore):
         handshake.start(self.auth_key)
         yield from handshake.on_finished
         return connection
+
+    def update_documents(self, table, documents, **kw):
+        '''Bulk update/insert of documents in a database
+        '''
+        term = ast.Table(table).insert(documents, **kw)
+        return self.execute(term)
 
     def _init(self, pool_size=50, auth_key='', **kwargs):
         self.auth_key = auth_key.encode('ascii')

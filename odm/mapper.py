@@ -252,20 +252,17 @@ class Mapper(EventHandler):
     def search(self, *kw):
         raise NotImplementedError
 
-    def create_tables(self, remove_existing=False):
+    def table_create(self, remove_existing=False):
         '''Loop though :attr:`registered_models` and issue the
         :meth:`.Manager.create_table` method.'''
         for manager in self:
-            yield from manager.create_table(remove_existing)
+            yield from manager.table_create(remove_existing)
 
-    @task
-    def drop_tables(self):
+    def table_drop(self):
         '''Loop though :attr:`registered_models` and issue the
         :meth:`.Manager.drop_table` method.'''
-        executed = []
-        for manager in self._registered_models.values():
-            executed.append(manager.drop_table())
-        return multi_async(executed, loop=self._loop)
+        for manager in self:
+            yield from manager.table_drop()
 
     # PRIVATE METHODS
     def _register_applications(self, applications, models, stores):

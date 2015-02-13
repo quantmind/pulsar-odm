@@ -53,6 +53,9 @@ class OdmTests(unittest.TestCase):
         cls.store = cls.create_store()
         yield from cls.store.database_create(cls.dbname)
         cls.mapper = cls.create_mapper()
+        #
+        # Create the tables
+        yield from cls.mapper.table_create()
 
     @classmethod
     def tearDownClass(cls):
@@ -72,3 +75,10 @@ class OdmTests(unittest.TestCase):
         self.assertTrue(User in mapper)
         self.assertTrue(User._meta in mapper)
         self.assertTrue(str(mapper))
+
+    def test_create_user(self):
+        mapper = self.mapper
+        user = yield from mapper.user(username='lsbardel').save()
+        self.assertEqual(user.username, 'lsbardel')
+        self.assertTrue(user.id)
+        self.assertEqual(user.id, user.pk)
