@@ -23,6 +23,7 @@ script:
   - pep8 odm tests
   - sudo rm -rf odm
   - python -m runtests --coverage
+  - python -m runtests --coveralls
 
 after_script:
   - killall rethinkdb

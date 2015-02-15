@@ -3,3 +3,4 @@ greenlet
 pytz
 python-dateutil
 rethinkdb
+pytables
