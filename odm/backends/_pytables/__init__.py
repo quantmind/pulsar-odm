@@ -28,5 +28,4 @@ class PyTablesStore(odm.Store):
         tbl = h5f.create_table('/', 'table_name', description_name)
 
 
-
 odm.register_store("pytables", "odm.backends._pytables.PyTablesStore")

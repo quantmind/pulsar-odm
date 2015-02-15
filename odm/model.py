@@ -216,14 +216,13 @@ class ModelMeta(object):
         fields = instance._meta.dfields
         if action == Command.INSERT:
             for field in fields.values():
-                name = field.store_name
-                value = field.to_store(instance.get_raw(name), store)
+                value = field.to_store(instance, store)
                 if ((value in NOTHING) and field.required and
                         not isinstance(field, AutoIdField)):
                     raise FieldError("Field '%s' is required for '%s'." %
                                      (name, self))
                 if value is not None:
-                    yield name, value
+                    yield field.store_name, value
             rest = set(instance) - set(fields)
         else:
             rest = instance
@@ -485,4 +484,3 @@ def mstr(s):
         return str(s)
     else:
         return s
-

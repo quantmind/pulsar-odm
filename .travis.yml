@@ -1,0 +1,26 @@
+language: python
+
+python:
+  - "3.4"
+
+install:
+  - pip install -r requirements_dev.txt
+  - python setup.py install
+  - sudo rm -rf /dev/shm && sudo ln -s /run/shm /dev/shm
+
+before_script:
+  - sudo add-apt-repository ppa:rethinkdb/ppa -y
+  - sudo apt-get update -q
+  - sudo apt-get install rethinkdb
+
+script:
+  - pep8 odm tests
+  - sudo rm -rf odm
+  - python -m runtests --coverage
+
+notifications:
+  email: false
+
+branches:
+  only:
+    - master

@@ -256,14 +256,19 @@ class Field(ModelMixin):
             initial = initial(form)
         return initial
 
-    def get_default(self, bfield=None):
+    def get_default(self, model):
         default = self.default
         if hasattr(default, '__call__'):
-            default = default(bfield)
+            default = default(model)
         return default
 
-    def to_store(self, value, store=None):
-        return self.get_default() if value in NOTHING else value
+    def to_store(self, instance, store):
+        value = instance.get_raw(self.store_name)
+        if value in NOTHING:
+            value = self.get_default(instance)
+            if value not in NOTHING:
+                instance[self.store_name] = value
+        return value
 
     def model(self):
         return None
@@ -508,4 +513,3 @@ class FileField(MultipleMixin, Field):
         elif res:
             d = res
             return File(d.file, d.filename, d.content_type, d.size)
-

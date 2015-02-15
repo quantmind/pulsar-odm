@@ -70,7 +70,7 @@ class RethinkDB(odm.RemoteStore):
             else:
                 model = command.args
                 table_name = model._meta.table_name
-                data = dict(self.model_data(model, action))
+                data = dict(model._meta.store_data(model, self, action))
                 group = inserts if action == Command.INSERT else updates
                 if table_name not in group:
                     group[table_name] = [], []
@@ -108,7 +108,7 @@ class RethinkDB(odm.RemoteStore):
         protocol_factory = self.create_protocol
         host, port = self._host
         transport, connection = yield from self._loop.create_connection(
-                protocol_factory, host, port)
+            protocol_factory, host, port)
         handshake = connection.current_consumer()
         handshake.start(self.auth_key)
         yield from handshake.on_finished

@@ -35,7 +35,7 @@ class Consumer(ProtocolConsumer):
 
     def data_received(self, data):
         if self._response_buf:
-             data = self._response_buf + data
+            data = self._response_buf + data
 
         try:
             value = None

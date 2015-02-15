@@ -1,2 +1,5 @@
 pulsar
+greenlet
+pytz
 python-dateutil
+rethinkdb

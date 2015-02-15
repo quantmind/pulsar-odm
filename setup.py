@@ -104,7 +104,6 @@ def run(argv=None):
           long_description=read('README.rst'),
           packages=packages,
           package_data={package_name: data_files},
-          scripts=['bin/luxmake.py'],
           classifiers=['Development Status :: 2 - Pre-Alpha',
                        'Environment :: Web Environment',
                        'Intended Audience :: Developers',

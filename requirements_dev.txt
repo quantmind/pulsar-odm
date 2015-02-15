@@ -1,6 +1,3 @@
+git+git@github.com:quantmind/pulsar.git@3.4
 coverage
 pep8
-psutil
-greenlet
-sqlalchemy
-psycopg2

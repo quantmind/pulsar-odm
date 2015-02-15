@@ -1,6 +1,5 @@
 from inspect import ismethod
 
-from pulsar import is_async
 from pulsar.apps.greenio import wait
 
 from .mapper import Mapper
@@ -42,8 +41,7 @@ class greentask:
         self._callable = callable
 
     def __call__(self, *args, **kw):
-        coro = self._callable(*args, **kw)
-        return wait(coro) if is_async(coro) else coro
+        return wait(self._callable(*args, **kw))
 
     def __repr__(self):
         return self._callable.__repr__()

@@ -34,7 +34,8 @@ class TestOdm(unittest.TestCase):
 
     def test_errors(self):
         self.assertRaises(odm.FieldError, odm.create_model, 'Model1',
-            _bla=odm.CharField())
-        self.assertRaises(odm.FieldError, odm.create_model, 'Model1',
+                          _bla=odm.CharField())
+        self.assertRaises(
+            odm.FieldError, odm.create_model, 'Model1',
             foo=odm.IntegerField(primary_key=True),
             bla=odm.CharField(primary_key=True))

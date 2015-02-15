@@ -3,6 +3,8 @@ import string
 from functools import wraps
 from datetime import datetime, timedelta
 
+import pytz
+
 from pulsar.apps.test import random_string
 from pulsar.apps.greenio import GreenPool
 
@@ -10,10 +12,10 @@ import odm
 from odm.green import GreenMapper
 
 
-default_expiry = lambda: datetime.now() + timedelta(days=7)
+default_expiry = lambda model: datetime.now(pytz.utc) + timedelta(days=7)
 
-randomname = lambda : random_string(min_len=8, max_len=8,
-                                    characters=string.ascii_letters)
+randomname = lambda: random_string(min_len=8, max_len=8,
+                                   characters=string.ascii_letters)
 
 
 class User(odm.Model):
@@ -86,6 +88,14 @@ class OdmTests(unittest.TestCase):
         self.assertTrue(user.id)
         self.assertEqual(user.id, user.pk)
 
+    def test_create_session(self):
+        mapper = self.mapper
+        user = yield from mapper.user(username='lsbardel').save()
+        session = yield from mapper.session(user=user).save()
+        self.assertTrue(session.id)
+        self.assertTrue(session.expiry)
+        self.assertEqual(session.user_id, user.id)
+
 
 def greenpool(test):
 
@@ -128,3 +138,12 @@ class GreenOdmTests(unittest.TestCase):
         self.assertEqual(user.username, 'lsbardel')
         self.assertTrue(user.id)
         self.assertEqual(user.id, user.pk)
+
+    @greenpool
+    def test_create_session(self):
+        mapper = self.mapper
+        user = mapper.user(username='lsbardel').save()
+        session = mapper.session(user=user).save()
+        self.assertTrue(session.id)
+        self.assertTrue(session.expiry)
+        self.assertEqual(session.user_id, user.id)
