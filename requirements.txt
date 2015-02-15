@@ -2,9 +2,3 @@ pulsar
 greenlet
 pytz
 python-dateutil
-rethinkdb
-cython
-numpy
-numexpr
-h5py
-tables

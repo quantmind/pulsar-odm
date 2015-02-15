@@ -1,3 +1,9 @@
 -e git+https://github.com/quantmind/pulsar.git@3.4#egg=pulsar
 coverage
 pep8
+rethinkdb
+cython
+numpy
+numexpr
+h5py
+tables
