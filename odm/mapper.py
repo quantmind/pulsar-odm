@@ -154,9 +154,7 @@ class Mapper(EventHandler):
                 manager_class = getattr(model, 'manager_class',
                                         default_manager)
                 manager = manager_class(model, store, read_store, self)
-                self._registered_models[model] = manager
-                if model._meta.name not in self._registered_names:
-                    self._registered_names[model._meta.name] = manager
+                self._register(manager)
         return registered[0] if len(registered) == 1 else registered
 
     def from_uuid(self, uuid, session=None):
@@ -215,7 +213,7 @@ class Mapper(EventHandler):
                 self._registered_names.pop(manager._meta.name)
             return [manager]
         else:
-            managers = list(self._registered_models.values())
+            managers = list(self)
             self._registered_models.clear()
             return managers
 
@@ -350,3 +348,9 @@ class Mapper(EventHandler):
                                              include_related=include_related,
                                              exclude=exclude):
                     yield m
+
+    def _register(self, manager):
+        model = manager._model
+        self._registered_models[model] = manager
+        if model._meta.name not in self._registered_names:
+            self._registered_names[model._meta.name] = manager

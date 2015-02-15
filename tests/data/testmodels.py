@@ -1,10 +1,13 @@
 import unittest
 import string
+from functools import wraps
 from datetime import datetime, timedelta
 
 from pulsar.apps.test import random_string
+from pulsar.apps.greenio import GreenPool
 
 import odm
+from odm.green import GreenMapper
 
 
 default_expiry = lambda: datetime.now() + timedelta(days=7)
@@ -59,7 +62,7 @@ class OdmTests(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        yield from cls.store.database_drop()
+        return cls.store.database_drop()
 
     def test_mapper(self):
         mapper = self.mapper
@@ -79,6 +82,49 @@ class OdmTests(unittest.TestCase):
     def test_create_user(self):
         mapper = self.mapper
         user = yield from mapper.user(username='lsbardel').save()
+        self.assertEqual(user.username, 'lsbardel')
+        self.assertTrue(user.id)
+        self.assertEqual(user.id, user.pk)
+
+
+def greenpool(test):
+
+    @wraps(test)
+    def _(self):
+        return self.pool.submit(test, self)
+
+    return _
+
+
+class GreenOdmTests(unittest.TestCase):
+    models = (User, Session, Blog)
+
+    @classmethod
+    def create_mapper(cls, **kw):
+        '''Create a mapper for models'''
+        mapper = GreenMapper(cls.store)
+        for model in cls.models:
+            mapper.register(model)
+        return mapper
+
+    @classmethod
+    def setUpClass(cls):
+        cls.dbname = randomname()
+        cls.store = cls.create_store()
+        cls.pool = GreenPool()
+        yield from cls.store.database_create(cls.dbname)
+        cls.mapper = cls.create_mapper()
+        yield from cls.pool.submit(cls.mapper.table_create)
+
+    @classmethod
+    def tearDownClass(cls):
+        yield from cls.pool.shutdown()
+        yield from cls.store.database_drop()
+
+    @greenpool
+    def test_create_user(self):
+        mapper = self.mapper
+        user = mapper.user(username='lsbardel').save()
         self.assertEqual(user.username, 'lsbardel')
         self.assertTrue(user.id)
         self.assertEqual(user.id, user.pk)

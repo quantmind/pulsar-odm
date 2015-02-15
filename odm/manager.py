@@ -1,4 +1,4 @@
-from pulsar import Event, chain_future, add_callback, task
+from pulsar import Event, chain_future, add_callback
 from pulsar.apps.data import Command
 
 from .query import AbstractQuery, Query, OdmError, QueryError, ModelNotFound
@@ -129,7 +129,6 @@ class Manager(AbstractQuery):
         '''
         return self.query_class(self)
 
-    @task
     def get(self, *args, **kw):
         '''Get a single model
         '''
@@ -185,21 +184,24 @@ class Manager(AbstractQuery):
         instance.update(kwargs)
         with self._mapper.begin() as t:
             t.add(instance)
-        return t.wait(lambda t: instance)
+        yield from t.commit()
+        return instance
 
     def save(self, instance):
         '''Save an ``instance`` of :attr:`_model`.
         '''
         with self._mapper.begin() as t:
             t.add(instance)
-        return t.wait(lambda t: instance)
+        yield from t.commit()
+        return instance
 
     def delete(self, instance):
         '''Delete an existing ``instance`` of :attr:`_model`
         '''
         with self._mapper.begin() as t:
             t.add(instance, Command.DELETE)
-        return t.wait(lambda t: instance)
+        yield from t.commit()
+        return instance
 
     # INTERNALS
     def _get(self, data):

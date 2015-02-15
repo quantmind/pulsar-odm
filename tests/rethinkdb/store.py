@@ -4,7 +4,7 @@ from odm import create_store
 
 from rethinkdb import RqlRuntimeError
 
-from . import data
+from tests import data
 
 
 class RethinDbTest(unittest.TestCase):
@@ -69,10 +69,3 @@ class RethinDbTest(unittest.TestCase):
         yield from store.table_drop(name)
         tables = yield from store.table_all()
         self.assertFalse(name in tables)
-
-
-class RethinDbOdmTest(data.OdmTests):
-
-    @classmethod
-    def create_store(cls):
-        return create_store('rethinkdb://127.0.0.1:28015')

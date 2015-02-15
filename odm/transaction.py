@@ -1,5 +1,4 @@
-from pulsar import (EventHandler, InvalidOperation, chain_future, multi_async,
-                    task)
+from pulsar import EventHandler, InvalidOperation, chain_future, multi_async
 
 from .model import Model, Command
 
@@ -132,27 +131,9 @@ class Transaction(EventHandler):
             of  transaction
         '''
         if self._executed is None:
-            self._executed = self._commit()
+            self._executed = {}
+            for store, commands in self._commands.items():
+                executed = yield from store.execute_transaction(commands)
+                self._executed[store] = executed
         else:
             raise InvalidOperation('Transaction already executed.')
-
-    def wait(self, callback=None):
-        '''Waits for the transaction have finished.
-
-        :param callback: optional function called back once the transaction
-            has finished. The function receives one parameter only, the
-            transaction.
-        :return: a :class:`~asyncio.Future`
-        '''
-        executed = self._executed
-        if executed is None:
-            executed = self.commit()
-        return chain_future(executed, callback) if callback else executed
-
-    # INTERNAL COMMIT METHOD
-    @task
-    def _commit(self):
-        # Run this method in the event loop so that it is thread safe
-        executed = dict(((store, store.execute_transaction(commands)) for
-                         store, commands in self._commands.items()))
-        return multi_async(executed, loop=self._loop)
