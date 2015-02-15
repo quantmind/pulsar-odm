@@ -2,8 +2,4 @@
 coverage
 pep8
 rethinkdb
-cython
-numpy
-numexpr
-h5py
 tables

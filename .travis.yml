@@ -10,6 +10,7 @@ before_install:
   - sudo apt-get install rethinkdb
 
 install:
+  - pip install -r pytables_requirements.txt
   - pip install -r requirements_dev.txt
   - python setup.py install
   - sudo rm -rf /dev/shm && sudo ln -s /run/shm /dev/shm
