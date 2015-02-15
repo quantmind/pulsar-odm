@@ -1,4 +1,6 @@
 '''Object Data Mapper for pulsar asynchronous framework'''
+import os
+
 VERSION = (0, 1, 0)
 
 __version__ = '.'.join((str(v) for v in VERSION))
@@ -7,7 +9,6 @@ __contact__ = "luca@quantmind.com"
 __homepage__ = "https://github.com/quantmind/pulsar-odm"
 
 
-import os
 if os.environ.get('pulsar_odm_setup') != 'running':
     from pulsar.apps.data import (Store, RemoteStore, create_store,
                                   register_store, Command)

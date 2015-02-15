@@ -16,8 +16,16 @@ def int_or_float(v):
 
 
 QSPLITTER = '__'
-pass_through = lambda x: x
-str_lower_case = lambda x: to_string(x).lower()
+
+
+def pass_through(x):
+    return x
+
+
+def str_lower_case(x):
+    return to_string(x).lower()
+
+
 range_lookups = {
     'gt': int_or_float,
     'ge': int_or_float,

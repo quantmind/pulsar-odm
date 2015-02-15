@@ -28,8 +28,10 @@ __all__ = ['field_widget',
 
 
 standard_validation_error = '{0} is required'
-standard_wrong_value_message = \
-    lambda field, value: '%s is not a valid value' % value
+
+
+def standard_wrong_value_message(field, value):
+    return '%s is not a valid value' % value
 
 
 def field_widget(tag, **defaults):

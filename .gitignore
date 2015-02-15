@@ -1,11 +1,17 @@
-*.pyc
 .DS_Store
-__pycache__
 *.log
 
-#python and eclipse
-.coverage
+#eclipse
 .project
 .pydevproject
+
+#coverage
+.coverage
 htmlcov
+
+#python
+*.pyc
+__pycache__
+odm.egg-info
 build
+dist

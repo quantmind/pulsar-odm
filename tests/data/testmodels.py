@@ -12,10 +12,13 @@ import odm
 from odm.green import GreenMapper
 
 
-default_expiry = lambda model: datetime.now(pytz.utc) + timedelta(days=7)
+def default_expiry(model):
+    return datetime.now(pytz.utc) + timedelta(days=7)
 
-randomname = lambda: random_string(min_len=8, max_len=8,
-                                   characters=string.ascii_letters)
+
+def randomname():
+    return random_string(min_len=8, max_len=8,
+                         characters=string.ascii_letters)
 
 
 class User(odm.Model):
