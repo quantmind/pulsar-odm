@@ -1,4 +1,0 @@
-cython
-numpy
-numexpr
-h5py
