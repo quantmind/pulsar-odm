@@ -11,7 +11,7 @@ def read(fname):
         return f.read()
 
 
-os.environ['odm_setup_running'] = 'yes'
+os.environ['pulsar_odm_setup'] = 'running'
 package_name = 'odm'
 root_dir = os.path.dirname(os.path.abspath(__file__))
 package_dir = os.path.join(root_dir, package_name)
