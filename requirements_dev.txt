@@ -1,3 +1,3 @@
--e git+git@github.com:quantmind/pulsar.git@3.4#egg=pulsar
+-e git+https://github.com/quantmind/pulsar-odm.git@3.4#egg=pulsar
 coverage
 pep8
