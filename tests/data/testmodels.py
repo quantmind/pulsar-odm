@@ -84,6 +84,12 @@ class OdmTests(unittest.TestCase):
         self.assertTrue(User._meta in mapper)
         self.assertTrue(str(mapper))
 
+    def test_query(self):
+        mapper = self.mapper
+        query = mapper.user.query()
+        self.assertEqual(query._manager, mapper.user)
+        self.assertEqual(query._meta, mapper.user._meta)
+
     def test_create_user(self):
         mapper = self.mapper
         user = yield from mapper.user(username='lsbardel').save()
