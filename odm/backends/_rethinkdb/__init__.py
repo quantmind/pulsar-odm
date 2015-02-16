@@ -87,6 +87,12 @@ class RethinkDB(odm.RemoteStore):
                 model['_rev'] = key
                 model._modified.clear()
 
+    #
+    def get_model(self, manager, pk):
+        table_name = manager._meta.table_name
+        data = yield from self.execute(ast.Table(table_name).get(pk))
+        return manager(**data)
+
     # Execute a command
     def execute(self, term, dbname=None, **options):
         connection = yield from self._pool.connect()

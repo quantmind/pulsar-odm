@@ -338,8 +338,8 @@ class Mapper(EventHandler):
                     for model in self.models_from_model(
                             value, include_related=include_related,
                             exclude=exclude):
-                        if (model._meta.app_label == label
-                                and model not in models):
+                        if (model._meta.app_label == label and
+                                model not in models):
                             models.add(model)
                             yield model
         else:

@@ -1,4 +1,4 @@
-from pulsar import Event, chain_future, add_callback
+from pulsar import Event, add_callback
 from pulsar.apps.data import Command
 
 from .query import AbstractQuery, Query, OdmError, QueryError, ModelNotFound
@@ -123,22 +123,33 @@ class Manager(AbstractQuery):
         '''
         return self._store.drop_table(self._model)
 
-    #    QUERY IMPLEMENTATION
+    # QUERY IMPLEMENTATION
     def query(self):
         '''Build a :class:`.Query` object
         '''
         return self.query_class(self)
 
     def get(self, *args, **kw):
-        '''Get a single model
+        '''Get a single model.
+
+        If only one positional argument is specified, it is assumed to be the
+        primary key. Alternatively one can specify key-valued parameters to
+        filter.
         '''
         if len(args) == 1:
-            return self._read_store.get_model(self, args[0])
+            model = yield from self._read_store.get_model(self, args[0])
+            return model
         elif args:
             raise QueryError("'get' expected at most 1 argument, %s given" %
                              len(args))
         else:
-            return chain_future(self.filter(**kw).all(), self._get)
+            data = yield from self.filter(**kw).all()
+            if len(data) == 1:
+                return data[0]
+            elif data:
+                raise QueryError('Expected one model got %s' % len(data))
+            else:
+                raise ModelNotFound
 
     def filter(self, **kwargs):
         '''Build a :class:`.Query` object with filtering clauses
@@ -202,15 +213,6 @@ class Manager(AbstractQuery):
             t.add(instance, Command.DELETE)
         yield from t.commit()
         return instance
-
-    # INTERNALS
-    def _get(self, data):
-        if len(data) == 1:
-            return data[0]
-        elif data:
-            raise QueryError('Expected one model got %s' % len(data))
-        else:
-            raise ModelNotFound
 
 
 def load_relmodel(field, callback):

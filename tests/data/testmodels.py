@@ -10,6 +10,7 @@ from pulsar.apps.greenio import GreenPool
 
 import odm
 from odm.green import GreenMapper
+from odm.errors import QueryError
 
 
 def default_expiry(model):
@@ -89,6 +90,14 @@ class OdmTests(unittest.TestCase):
         query = mapper.user.query()
         self.assertEqual(query._manager, mapper.user)
         self.assertEqual(query._meta, mapper.user._meta)
+        self.assertEqual(query._mapper, mapper)
+        self.assertEqual(query._loop, mapper.user._loop)
+        query2 = query.filter(username='bla')
+        self.assertNotEqual(query2, query)
+
+    def test_query_errors(self):
+        mapper = self.mapper
+        yield from self.async.assertRaises(QueryError, mapper.user.get, 1, 2)
 
     def test_create_user(self):
         mapper = self.mapper
@@ -96,6 +105,9 @@ class OdmTests(unittest.TestCase):
         self.assertEqual(user.username, 'lsbardel')
         self.assertTrue(user.id)
         self.assertEqual(user.id, user.pk)
+        # Let get the model
+        user2 = yield from mapper.user.get(user.id)
+        self.assertEqual(user2.id, user.id)
 
     def test_create_session(self):
         mapper = self.mapper

@@ -6,6 +6,7 @@
 .pydevproject
 
 #coverage
+.coveralls-repo-token
 .coverage
 htmlcov
 

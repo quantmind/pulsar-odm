@@ -24,8 +24,8 @@ class Consumer(ProtocolConsumer):
     def start_request(self):
         query = self.request
         if self.connection.requests_processed == 1:
-            msg = (struct.pack("<2L", p.VersionDummy.Version.V0_3, len(query))
-                   + query +
+            msg = (struct.pack("<2L", p.VersionDummy.Version.V0_3,
+                               len(query)) + query +
                    struct.pack("<L", p.VersionDummy.Protocol.JSON))
             self.write(msg)
         else:

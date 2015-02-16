@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 import sys
 import os
-from multiprocessing import current_process
 
 
 def run(**params):
@@ -10,13 +9,12 @@ def run(**params):
 
     args = params.get('argv', sys.argv)
     if '--coveralls' in args:
-        import pulsar
+        import odm
         from pulsar.utils.path import Path
         from pulsar.apps.test.cov import coveralls
 
-        path = Path(__file__)
         repo_token = None
-        strip_dirs = [Path(pulsar.__file__).parent.parent, os.getcwd()]
+        strip_dirs = [Path(odm.__file__).parent.parent, os.getcwd()]
         if os.path.isfile('.coveralls-repo-token'):
             with open('.coveralls-repo-token') as f:
                 repo_token = f.read().strip()
