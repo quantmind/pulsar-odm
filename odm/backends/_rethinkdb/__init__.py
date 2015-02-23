@@ -108,6 +108,8 @@ class RethinkDB(odm.RemoteStore):
     def get_model(self, manager, pk):
         table_name = manager._meta.table_name
         data = yield from self.execute(ast.Table(table_name).get(pk))
+        if not data:
+            raise odm.ModelNotFound
         return self._model_from_db(manager, **data)
 
     def compile_query(self, query):

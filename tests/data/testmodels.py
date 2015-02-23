@@ -132,6 +132,12 @@ class OdmTests(unittest.TestCase):
         self.assertEqual(session.id, id)
         self.assertTrue(session.get(REV_KEY))
 
+    def test_not_found(self):
+        mapper = self.mapper
+        yield from self.async.assertRaises(odm.ModelNotFound,
+                                           mapper.user.get,
+                                           'dkhsgcvshgcvshgcvsdh')
+
     def test_query(self):
         mapper = self.mapper
         user1 = yield from mapper.user(username='pluto1',
@@ -159,6 +165,14 @@ class OdmTests(unittest.TestCase):
         user1 = users[0]
         self.assertTrue(user1.get(REV_KEY))
         self.assertEqual(user.id, user1.id)
+        #
+        # Test get filter
+        kappa = yield from mapper.user.get(username='kappa')
+        self.assertEqual(kappa.username, 'kappa')
+        #
+        yield from self.async.assertRaises(odm.ModelNotFound,
+                                           mapper.user.get,
+                                           username='kappaxxx')
 
 
 def greenpool(test):
