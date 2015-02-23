@@ -52,6 +52,8 @@ def field_widget(tag, **defaults):
 
 
 class ModelMixin(object):
+    primary_key = False
+    index = False
 
     def register_with_model(self, name, model):
         '''Called during the creation of a the :class:`StdModel`
@@ -145,8 +147,6 @@ class Field(ModelMixin):
 
         dictionary of attributes.
     '''
-    primary_key = False
-    index = False
     default = None
     widget = None
     required = True
@@ -247,15 +247,15 @@ class Field(ModelMixin):
     def _clean(self, value, instance):
         return value
 
-    def get_initial(self, form):
+    def get_initial(self, model):
         '''Get the initial value of field if available.
 
-        :param form: an instance of the :class:`Form` class
+        :param model: an instance of the :class:`.Model` class
             where the field is declared.
         '''
         initial = self.initial
         if hasattr(initial, '__call__'):
-            initial = initial(form)
+            initial = initial(model)
         return initial
 
     def get_default(self, model):
@@ -264,16 +264,16 @@ class Field(ModelMixin):
             default = default(model)
         return default
 
-    def to_store(self, instance, store):
+    def from_instance_to_store(self, instance, store):
         value = instance.get_raw(self.store_name)
         if value in NOTHING:
             value = self.get_default(instance)
             if value not in NOTHING:
                 instance[self.store_name] = value
-        return value
+        return self.to_store(value, store)
 
-    def model(self):
-        return None
+    def to_store(self, value, store):
+        return value
 
     def html_name(self, name):
         return name
@@ -385,8 +385,10 @@ class DateTimeField(DateField):
             value = pytz.utc.localize(value)
         return value
 
-    def to_store(self, instance, store):
-        return self.todate(super().to_store(instance, store))
+    def to_store(self, value, store):
+        value = self.todate(value)
+        if isinstance(value, datetime):
+            return store.datetime(value)
 
 
 class BooleanField(Field):
@@ -441,12 +443,12 @@ class ChoiceField(MultipleMixin, Field):
         attrs['options'] = self.options.all()
         return attrs
 
-    def get_initial(self, form):
+    def get_initial(self, instance):
         initial = self.initial
         if hasattr(initial, '__call__'):
-            initial = initial(form)
+            initial = initial(instance)
         if not initial:
-            initial = self.options.get_initial(form)
+            initial = self.options.get_initial(instance)
         return initial
 
     def value_from_instance(self, instance):

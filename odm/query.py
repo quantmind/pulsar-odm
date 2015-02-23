@@ -5,10 +5,6 @@ from pulsar.utils.pep import to_string
 from .errors import *
 
 
-__all__ = ['Query', 'CompiledQuery', 'OdmError',
-           'ModelNotFound', 'QueryError']
-
-
 def int_or_float(v):
     v = float(v)
     i = int(v)
@@ -292,18 +288,6 @@ class CompiledQuery(object):
         Return a :class:`~asyncio.Future`
         '''
         raise NotImplementedError
-
-    def models(self, data):
-        '''Build a list of models from a list of dictionaries.
-
-        Uses the :meth:`.Store.build_model` method
-
-        :param data: list of dictionaries
-        :return: a list of models
-        '''
-        build = self._store.build_model
-        manager = self._manager
-        return [build(manager, params) for params in data]
 
     def _build(self):
         '''Compile the :attr:`query`

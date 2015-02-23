@@ -17,4 +17,5 @@ if os.environ.get('pulsar_odm_setup') != 'running':
     from .manager import Manager
     from .model import Model, create_model
     from .mapper import Mapper
+    from .query import Query
     from . import backends

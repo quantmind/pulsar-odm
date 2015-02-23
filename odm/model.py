@@ -6,6 +6,7 @@ from collections import Mapping, OrderedDict
 
 from pulsar.utils.html import NOTHING
 from pulsar.utils.structures import mapping_iterator
+from pulsar.utils.pep import to_string
 
 from .manager import class_prepared, makeManyToManyRelatedManager, Command
 from .relfields import Field, ForeignKey, CompositeIdField
@@ -214,24 +215,19 @@ class ModelMeta(object):
         if invalid values are stored in ``instance``.
         '''
         fields = instance._meta.dfields
-        if action == Command.INSERT:
-            for field in fields.values():
-                value = field.to_store(instance, store)
-                if ((value in NOTHING) and field.required and
-                        not isinstance(field, AutoIdField)):
-                    raise FieldError("Field '%s' is required for '%s'." %
-                                     (name, self))
-                if value is not None:
-                    yield field.store_name, value
-            rest = set(instance) - set(fields)
-        else:
-            rest = instance
+        for field in fields.values():
+            value = field.from_instance_to_store(instance, store)
+            if ((value in NOTHING) and field.required and
+                    not isinstance(field, AutoIdField)):
+                raise FieldError("Field '%s' is required for '%s'." %
+                                 (name, self))
+            if value is not None:
+                yield field.store_name, value
+        rest = set(instance) - set(fields)
         #
         for name in rest:
-            if name in fields:
-                value = fields[name].to_store(instance[name], store)
-            elif name in self.converters:
-                value = self.converters[name](instance[name], converters)
+            if name in self.converters:
+                value = self.converters[name](instance[name], store)
             elif not is_private_field(name):
                 value = instance[name]
             else:

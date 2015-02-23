@@ -7,6 +7,7 @@ from pulsar.apps.test import random_string
 from pulsar.apps.greenio import GreenPool
 
 import odm
+from odm.store import REV_KEY
 from odm.green import GreenMapper
 from odm.errors import QueryError
 
@@ -21,7 +22,8 @@ def randomname():
 
 
 class User(odm.Model):
-    username = odm.CharField(unique=True)
+    # username = odm.CharField(unique=True)
+    username = odm.CharField()
     password = odm.CharField(required=False, hidden=True)
     first_name = odm.CharField(required=False, index=True)
     last_name = odm.CharField(required=False, index=True)
@@ -32,7 +34,6 @@ class User(odm.Model):
 
 
 class Session(odm.Model):
-    '''A session model with a hash table as data store.'''
     expiry = odm.DateTimeField(default=default_expiry)
     user = odm.ForeignKey(User)
 
@@ -114,6 +115,50 @@ class OdmTests(unittest.TestCase):
         self.assertTrue(session.id)
         self.assertTrue(session.expiry)
         self.assertEqual(session.user_id, user.id)
+        self.assertTrue(session.get(REV_KEY))
+        # Add a value and save
+        session['test'] = 'this is just a test'
+        session2 = yield from session.save()
+        self.assertEqual(session2, session)
+        self.assertEqual(session2.test, 'this is just a test')
+
+    def test_get_session(self):
+        mapper = self.mapper
+        user = yield from mapper.user(username='lsbardel3').save()
+        session = yield from mapper.session(user=user,
+                                            test='hello').save()
+        id = session.id
+        session = yield from mapper.session.get(id)
+        self.assertEqual(session.id, id)
+        self.assertTrue(session.get(REV_KEY))
+
+    def test_query(self):
+        mapper = self.mapper
+        user1 = yield from mapper.user(username='pluto1',
+                                       email='pluto1@test.com').save()
+        user2 = yield from mapper.user(username='pluto2',
+                                       email='pluto2@test.com').save()
+        query = mapper.user.query()
+        self.assertIsInstance(query, odm.Query)
+        self.assertEqual(query._manager, mapper.user)
+        users = yield from query.all()
+        self.assertTrue(users)
+        self.assertTrue(len(users) >= 2)
+        for user in users:
+            self.assertTrue(user.get(REV_KEY))
+
+    def test_filter_username(self):
+        mapper = self.mapper
+        user = yield from mapper.user(username='kappa',
+                                      email='kappa@test.com').save()
+        query = mapper.user.filter(username='kappa')
+        self.assertIsInstance(query, odm.Query)
+        users = yield from query.all()
+        self.assertTrue(users)
+        self.assertEqual(len(users), 1)
+        user1 = users[0]
+        self.assertTrue(user1.get(REV_KEY))
+        self.assertEqual(user.id, user1.id)
 
 
 def greenpool(test):
@@ -166,3 +211,4 @@ class GreenOdmTests(unittest.TestCase):
         self.assertTrue(session.id)
         self.assertTrue(session.expiry)
         self.assertEqual(session.user_id, user.id)
+        self.assertTrue(session.get(REV_KEY))

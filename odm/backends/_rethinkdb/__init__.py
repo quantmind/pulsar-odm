@@ -2,17 +2,19 @@
 from functools import partial
 from collections import OrderedDict
 
-try:
-    import rethinkdb
-    from rethinkdb import ast
-    from .protocol import Connection, Consumer, start_query
-except ImportError:     # pragma    nocover
-    rethinkdb = None
-
 from pulsar import Pool
 
 import odm
 from odm.store import REV_KEY
+
+try:
+    import rethinkdb
+    from rethinkdb import ast
+    from .protocol import Connection, Consumer, start_query
+    from .query import RethinkDbQuery
+except ImportError:     # pragma    nocover
+    rethinkdb = None
+
 
 Command = odm.Command
 
@@ -60,6 +62,15 @@ class RethinkDB(odm.RemoteStore):
         '''
         return self.execute(ast.TableDropTL(table_name), **kw)
 
+    def table_index_create(self, table_name, index, **kw):
+        return self.execute(ast.Table(table_name).index_create(index), **kw)
+
+    def table_index_drop(self, table_name, index, **kw):
+        return self.execute(ast.Table(table_name).index_drop(index), **kw)
+
+    def table_index_all(self, table_name, **kw):
+        return self.execute(ast.Table(table_name).index_list(), **kw)
+
     # Transaction
     def execute_transaction(self, transaction):
         updates = OrderedDict()
@@ -75,7 +86,8 @@ class RethinkDB(odm.RemoteStore):
             group[table_name][1].append(model)
         #
         for table, docs_models in inserts.items():
-            executed = yield from self.update_documents(table, docs_models[0])
+            term = ast.Table(table).insert(docs_models[0])
+            executed = yield from self.execute(term)
 
             errors = []
             for key, model in zip(executed['generated_keys'],
@@ -83,12 +95,23 @@ class RethinkDB(odm.RemoteStore):
                 model['id'] = key
                 model[REV_KEY] = key
                 model._modified.clear()
+        #
+        for table, docs_models in updates.items():
+            for data, model in zip(docs_models[0], docs_models[1]):
+                data[REV_KEY] = model[REV_KEY]
+                model._modified.clear()
+
+            term = ast.Table(table).update(docs_models[0])
+            yield from self.execute(term)
 
     #
     def get_model(self, manager, pk):
         table_name = manager._meta.table_name
         data = yield from self.execute(ast.Table(table_name).get(pk))
-        return manager(**data)
+        return self._model_from_db(manager, **data)
+
+    def compile_query(self, query):
+        return RethinkDbQuery(self, query)
 
     # Execute a command
     def execute(self, term, dbname=None, **options):
@@ -117,15 +140,15 @@ class RethinkDB(odm.RemoteStore):
         yield from handshake.on_finished
         return connection
 
-    def update_documents(self, table, documents, **kw):
-        '''Bulk update/insert of documents in a database
-        '''
-        term = ast.Table(table).insert(documents, **kw)
-        return self.execute(term)
-
     def _init(self, pool_size=50, auth_key='', **kwargs):
         self.auth_key = auth_key.encode('ascii')
         self._pool = Pool(self.connect, pool_size=pool_size, loop=self._loop)
+
+    def _model_from_db(self, manager, *args, **kwargs):
+        instance = self.create_model(manager, *args, **kwargs)
+        if REV_KEY not in instance:
+            instance[REV_KEY] = instance.id
+        return instance
 
 
 odm.register_store("rethinkdb", "odm.backends._rethinkdb.RethinkDB")

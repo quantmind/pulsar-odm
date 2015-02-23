@@ -69,6 +69,9 @@ class OdmMixin:
             action = Command.UPDATE if REV_KEY in model else Command.INSERT
         return (dict(model._meta.store_data(model, self, action)), action)
 
+    def datetime(self, value):
+        return value
+
 
 class StoreTransaction(object):
     '''Transaction for a given :class:`.Store`

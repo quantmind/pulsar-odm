@@ -67,10 +67,7 @@ class Consumer(ProtocolConsumer):
             if not data:
                 self.finished(value)
 
-    def _check_response(self, response):
-        query = self.request
-        term = query.term
-        opts = query.global_optargs
+    def _check_error_response(self, response, term):
         if response.type == pResponse.RUNTIME_ERROR:
             message = response.data[0]
             frames = response.backtrace
@@ -83,7 +80,13 @@ class Consumer(ProtocolConsumer):
             message = response.data[0]
             frames = response.backtrace
             raise RqlClientError(message, term, frames)
-        elif response.type in SequenceResponse:
+
+    def _check_response(self, response):
+        query = self.request
+        term = query.term
+        opts = query.global_optargs
+        self._check_error_response(response, term)
+        if response.type in SequenceResponse:
             # Sequence responses
             value = Cursor(self, query, opts)
             value._extend(response)

@@ -8,6 +8,13 @@ import odm
 from odm.model import ModelType
 
 from .data import User, Session
+from django.core.exceptions import FieldError
+
+
+class NoStr:
+
+    def __str__(self):
+        raise Exception
 
 
 class TestOdm(unittest.TestCase):
@@ -42,6 +49,17 @@ class TestOdm(unittest.TestCase):
             odm.FieldError, odm.create_model, 'Model1',
             foo=odm.IntegerField(primary_key=True),
             bla=odm.CharField(primary_key=True))
+
+    def test_char_field(self):
+        user = User(username='pippo', bla='foo')
+        user['username'] = 78
+        self.assertEqual(user.username, '78')
+
+        def _():
+            user['username'] = NoStr()
+            value = user.username
+
+        self.assertRaises(odm.ValidationError, _)
 
     def test_datetime_field(self):
         session = Session()
