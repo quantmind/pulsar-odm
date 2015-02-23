@@ -12,6 +12,7 @@ except ImportError:     # pragma    nocover
 from pulsar import Pool
 
 import odm
+from odm.store import REV_KEY
 
 Command = odm.Command
 
@@ -80,7 +81,7 @@ class RethinkDB(odm.RemoteStore):
             for key, model in zip(executed['generated_keys'],
                                   docs_models[1]):
                 model['id'] = key
-                model['_rev'] = key
+                model[REV_KEY] = key
                 model._modified.clear()
 
     #

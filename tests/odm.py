@@ -70,4 +70,3 @@ class TestOdm(unittest.TestCase):
         self.assertTrue('expiry' in data)
         expiry = data['expiry']
         self.assertTrue(expiry.tzinfo)
-
