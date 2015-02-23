@@ -1,4 +1,4 @@
--e git+https://github.com/quantmind/pulsar.git@3.4#egg=pulsar
+-e git+https://github.com/quantmind/pulsar.git#egg=pulsar
 coverage
 pep8
 rethinkdb

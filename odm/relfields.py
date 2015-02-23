@@ -69,7 +69,8 @@ class ForeignKey(Field):
         else:
             return value
 
-    def to_store(self, value, store):
+    def to_store(self, instance, store):
+        value = super().to_store(instance, store)
         if isinstance(value, self.relmodel):
             return value.id
         else:

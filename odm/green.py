@@ -28,6 +28,12 @@ class GreenManager:
         attr = getattr(self.manager, name)
         return greentask(attr) if ismethod(attr) else attr
 
+    def __repr__(self):
+        return self.manager.__repr__()
+
+    def __str__(self):
+        return self.manager.__str__()
+
     def __call__(self, *args, **kwargs):
         '''Create a new model without committing to database.
         '''

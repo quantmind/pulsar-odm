@@ -64,18 +64,14 @@ class RethinkDB(odm.RemoteStore):
         updates = OrderedDict()
         inserts = OrderedDict()
         for command in transaction.commands:
-            action = command.action
-            if not action:
-                raise NotImplementedError
-            else:
-                model = command.args
-                table_name = model._meta.table_name
-                data = dict(model._meta.store_data(model, self, action))
-                group = inserts if action == Command.INSERT else updates
-                if table_name not in group:
-                    group[table_name] = [], []
-                group[table_name][0].append(data)
-                group[table_name][1].append(model)
+            model = command.args
+            table_name = model._meta.table_name
+            data, action = self.model_data(model, command.action)
+            group = inserts if action == Command.INSERT else updates
+            if table_name not in group:
+                group[table_name] = [], []
+            group[table_name][0].append(data)
+            group[table_name][1].append(model)
         #
         for table, docs_models in inserts.items():
             executed = yield from self.update_documents(table, docs_models[0])

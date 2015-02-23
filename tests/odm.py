@@ -1,10 +1,13 @@
 import unittest
+from datetime import datetime
 from collections import Mapping
+
+import pytz
 
 import odm
 from odm.model import ModelType
 
-from .data import User
+from .data import User, Session
 
 
 class TestOdm(unittest.TestCase):
@@ -39,3 +42,32 @@ class TestOdm(unittest.TestCase):
             odm.FieldError, odm.create_model, 'Model1',
             foo=odm.IntegerField(primary_key=True),
             bla=odm.CharField(primary_key=True))
+
+    def test_datetime_field(self):
+        session = Session()
+        self.assertFalse(session)
+        self.assertEqual(session.expiry, None)
+        self.assertRaises(KeyError, lambda: session['expiry'])
+        #
+        # Get store data
+        store = odm.create_store('dummy://')
+        data, action = store.model_data(session)
+        self.assertEqual(action, odm.Command.INSERT)
+        self.assertEqual(len(data), 1)
+        self.assertTrue('expiry' in data)
+        expiry = data['expiry']
+        self.assertTrue(expiry.tzinfo)
+
+        dt = datetime.now()
+        session = Session(expiry=dt)
+        self.assertNotEqual(session.expiry, dt)
+        self.assertEqual(session.expiry, pytz.utc.localize(dt))
+        #
+        session = Session(expiry=dt)
+        data, action = store.model_data(session)
+        self.assertEqual(action, odm.Command.INSERT)
+        self.assertEqual(len(data), 1)
+        self.assertTrue('expiry' in data)
+        expiry = data['expiry']
+        self.assertTrue(expiry.tzinfo)
+

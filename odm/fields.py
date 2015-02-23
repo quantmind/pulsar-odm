@@ -2,6 +2,8 @@ from inspect import isclass
 from datetime import datetime, date
 from collections import Mapping
 
+import pytz
+
 from dateutil.parser import parse as dateparser
 
 from pulsar.utils.html import NOTHING, escape
@@ -50,7 +52,6 @@ def field_widget(tag, **defaults):
 
 
 class ModelMixin(object):
-    to_python = None
 
     def register_with_model(self, name, model):
         '''Called during the creation of a the :class:`StdModel`
@@ -62,8 +63,7 @@ class ModelMixin(object):
         self.store_name = self.get_store_name()
         self._meta = meta = model._meta
         meta.dfields[name] = self
-        if self.to_python:
-            meta.converters[name] = self.to_python
+        meta.converters[name] = self.clean
         if self.primary_key:
             meta.pk = self
         self.add_to_fields()
@@ -231,20 +231,20 @@ class Field(ModelMixin):
         '''
         raise ValueError
 
-    def clean(self, value, bfield):
+    def clean(self, value, instance):
         '''Clean the field value'''
         if self.validator:
-            return self.validator(value, bfield)
+            return self.validator(value, instance)
         if value in NOTHING:
-            value = self.get_default(bfield)
+            value = self.get_default(instance)
             if self.required and value in NOTHING:
                 raise ValidationError(
-                    self.validation_error.format(bfield.label, value))
+                    self.validation_error.format(self.name, value))
             elif not self.required:
                 return value
-        return self._clean(value, bfield)
+        return self._clean(value, instance)
 
-    def _clean(self, value, bfield):
+    def _clean(self, value, instance):
         return value
 
     def get_initial(self, form):
@@ -282,14 +282,6 @@ class Field(ModelMixin):
         '''Create the Html element for this :class:`Field`.'''
         return self.widget(**kwargs)
 
-    def get_widget_data(self, bfield):
-        '''Returns a dictionary of data to be added to the widget data
-attribute. By default return ``None``. Override for custom behaviour.
-
-:parameter bfield: instance of :class:`BoundField` of this field.
-:rtype: an instance of ``dict`` or ``None``.'''
-        return None
-
 
 class CharField(Field):
     '''A text :class:`Field` which introduces three
@@ -325,70 +317,50 @@ class CharField(Field):
     attrs = {'type': 'text', 'maxlength': 50}
     default = ''
 
-    def _clean(self, value, bfield):
+    def _clean(self, value, instance):
         try:
-            value = to_string(value)
+            return to_string(value)
         except Exception:
             raise ValidationError
-        if self.required and not value:
-            raise ValidationError('Invalid value')
-        return value
 
 
 class TextField(Field):
     attrs = {'type': 'textarea'}
     default = ''
 
-    def _clean(self, value, bfield):
+    def _clean(self, value, instance):
         try:
-            value = to_string(value)
+            return to_string(value)
         except Exception:
             raise ValidationError
-        if self.required and not value:
-            raise ValidationError(
-                self.validation_error.format(bfield.name, value))
-        return value
 
 
 class IntegerField(Field):
     attrs = {'type': 'number'}
+    convert_error = 'Could not convert {0} to a valid number'
+    totype = int
 
-    def clean(self, value, bfield):
+    def _clean(self, value, instance):
         try:
             value = value.replace(',', '')
         except AttributeError:
             pass
-        return super(IntegerField, self).clean(value, bfield)
-
-    def _clean(self, value, bfield):
         try:
-            value = int(value)
-            if self.validator:
-                return self.validator(value)
-            return value
-        except:
+            return self.totype(value)
+        except Exception:
             raise ValidationError(self.convert_error.format(value))
 
 
 class FloatField(IntegerField):
     '''A field which normalises to a Python float value'''
-    widget = field_widget('input', type='number')
-    convert_error = 'Could not convert {0} to a valid number'
-
-    def _clean(self, value, bfield):
-        try:
-            value = float(value)
-            if self.validator:
-                return self.validator(value)
-            return value
-        except:
-            raise ValidationError(self.validation_error.format(bfield, value))
+    attrs = {'type': 'text'}
+    totype = float
 
 
 class DateField(IntegerField):
     attrs = {'type': 'date'}
 
-    def _clean(self, value, bfield):
+    def _clean(self, value, instance):
         if not isinstance(value, date):
             try:
                 value = dateparser(value)
@@ -409,7 +381,12 @@ class DateTimeField(DateField):
     def todate(self, value):
         if not hasattr(value, 'date'):
             value = datetime(value.year, value.month, value.day)
+        if isinstance(value, datetime) and not value.tzinfo:
+            value = pytz.utc.localize(value)
         return value
+
+    def to_store(self, instance, store):
+        return self.todate(super().to_store(instance, store))
 
 
 class BooleanField(Field):
@@ -417,7 +394,7 @@ class BooleanField(Field):
     default = False
     required = False
 
-    def clean(self, value, bfield):
+    def clean(self, value, instance):
         '''Clean the field value'''
         if value in ('False', '0'):
             return False
@@ -484,10 +461,10 @@ class ChoiceField(MultipleMixin, Field):
         self.options = options
         super(ChoiceField, self).handle_params(**kwargs)
 
-    def _clean(self, value, bfield):
+    def _clean(self, value, instance):
         if value is not None:
             values = value if self.multiple else (value,)
-            values = self.options.clean(values, bfield)
+            values = self.options.clean(values, instance)
             return values if self.multiple else values[0]
         return value
 

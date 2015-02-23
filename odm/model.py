@@ -6,17 +6,17 @@ from collections import Mapping, OrderedDict
 
 from pulsar.utils.html import NOTHING
 from pulsar.utils.structures import mapping_iterator
-from pulsar.apps.data import REV_KEY
 
 from .manager import class_prepared, makeManyToManyRelatedManager, Command
 from .relfields import Field, ForeignKey, CompositeIdField
 from .errors import *
+from .store import REV_KEY
 
 
 primary_keys = ('id', 'ID', 'pk', 'PK')
 
 
-def rev_key(value):
+def rev_key(value, instance):
     try:
         return int(value)
     except ValueError:
@@ -231,7 +231,7 @@ class ModelMeta(object):
             if name in fields:
                 value = fields[name].to_store(instance[name], store)
             elif name in self.converters:
-                value = self.converters[name](instance[name])
+                value = self.converters[name](instance[name], converters)
             elif not is_private_field(name):
                 value = instance[name]
             else:
@@ -299,10 +299,12 @@ class Model(dict, metaclass=ModelType):
         if field in primary_keys:
             field = self._meta.pkname()
         value = super().__getitem__(field)
+        # If the field was not accessed yet, convert it to python and
+        # added it to the set of field accoessed
         if field not in self._access_cache:
             self._access_cache.add(field)
             if field in self._meta.converters:
-                value = self._meta.converters[field](value)
+                value = self._meta.converters[field](value, self)
                 super().__setitem__(field, value)
         return value
 

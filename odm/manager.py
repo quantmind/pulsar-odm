@@ -276,8 +276,8 @@ class LazyForeignKey(LazyProxy):
     def load(self, instance):
         field = self.field
         key = '_%s' % field.name
-        if field.store_name in instance:
-            pk = instance[field.store_name]
+        pk = instance.get(field.store_name)
+        if pk:
             value = instance.get(key)
             if value is not None:
                 if value.id == pk:

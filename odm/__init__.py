@@ -10,8 +10,7 @@ __homepage__ = "https://github.com/quantmind/pulsar-odm"
 
 
 if os.environ.get('pulsar_odm_setup') != 'running':
-    from pulsar.apps.data import (Store, RemoteStore, create_store,
-                                  register_store, Command)
+    from .store import *
     from .errors import *
     from .fields import *
     from .relfields import *

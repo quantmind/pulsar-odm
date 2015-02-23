@@ -3,8 +3,6 @@ import string
 from functools import wraps
 from datetime import datetime, timedelta
 
-import pytz
-
 from pulsar.apps.test import random_string
 from pulsar.apps.greenio import GreenPool
 
@@ -14,7 +12,7 @@ from odm.errors import QueryError
 
 
 def default_expiry(model):
-    return datetime.now(pytz.utc) + timedelta(days=7)
+    return datetime.now() + timedelta(days=7)
 
 
 def randomname():

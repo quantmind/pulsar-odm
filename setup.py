@@ -6,6 +6,7 @@ from setuptools import setup
 from distutils.command.install_data import install_data
 from distutils.command.install import INSTALL_SCHEMES
 
+
 def read(fname):
     with open(os.path.join(root_dir, fname)) as f:
         return f.read()
