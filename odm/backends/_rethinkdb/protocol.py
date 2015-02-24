@@ -67,6 +67,11 @@ class Consumer(ProtocolConsumer):
             if not data:
                 self.finished(value)
 
+    def is_open(self):
+        if self._connection:
+            return not self._connection.closed
+        return False
+
     def _check_error_response(self, response, term):
         if response.type == pResponse.RUNTIME_ERROR:
             message = response.data[0]

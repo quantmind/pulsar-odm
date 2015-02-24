@@ -37,31 +37,6 @@ range_lookups = {
 lookup_value = namedtuple('lookup_value', 'type value')
 
 
-class AbstractQuery(object):
-    _meta = None
-
-    def filter(self, **kwargs):
-        raise NotImplementedError
-
-    def exclude(self, **kwargs):
-        raise NotImplementedError
-
-    def union(self, *queries):
-        raise NotImplementedError
-
-    def intersect(self, *queries):
-        raise NotImplementedError
-
-    def where(self, *expressions):
-        raise NotImplementedError
-
-    def count(self):
-        raise NotImplementedError
-
-    def all(self):
-        raise NotImplementedError
-
-
 def query_op(f):
     '''Decorator for a :class:`Query` operation.
     '''
@@ -226,7 +201,7 @@ class Query(object):
     # INTERNALS
     def compiled(self):
         if not self._compiled:
-            self._compiled = self._manager._read_store.compile_query(self)
+            self._compiled = self._manager.compile_query(self)
         return self._compiled
 
     def _clone(self):

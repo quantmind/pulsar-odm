@@ -120,23 +120,6 @@ class Field(ModelMixin):
 
         Default: ``None``.
 
-    .. attribute:: initial
-
-        Initial value for field. If Provided, the field will display
-        the value when rendering the form without bound data.
-        It can be a callable which receive a :class:`Form`
-        instance as argument.
-
-        Default: ``None``.
-
-        .. seealso::
-
-            Inital is used by :class:`Form` and
-            by :class:`HtmlForm` instances to render
-            an unbounded form. The :func:`Form.initials`
-            method return a dictionary of initial values for fields
-            providing one.
-
     .. attribute:: widget
 
         Factory of :class:`~pulsar.apps.wsgi.Html` objects.
@@ -156,7 +139,7 @@ class Field(ModelMixin):
     attrs = None
 
     def __init__(self, unique=False, primary_key=None, required=None,
-                 index=False, default=None, initial=None,
+                 index=False, default=None,
                  validation_error=None, help_text=None,
                  label=None, widget=None, widget_attrs=None,
                  attrname=None, wrong_value_message=None,
@@ -166,7 +149,6 @@ class Field(ModelMixin):
         self.primary_key = (self.primary_key if primary_key is None else
                             primary_key)
         self.default = default if default is not None else self.default
-        self.initial = initial
         self.required = required if required is not None else self.required
         index = index if index is not None else self.index
         if self.primary_key:
@@ -246,17 +228,6 @@ class Field(ModelMixin):
 
     def _clean(self, value, instance):
         return value
-
-    def get_initial(self, model):
-        '''Get the initial value of field if available.
-
-        :param model: an instance of the :class:`.Model` class
-            where the field is declared.
-        '''
-        initial = self.initial
-        if hasattr(initial, '__call__'):
-            initial = initial(model)
-        return initial
 
     def get_default(self, model):
         default = self.default
@@ -442,14 +413,6 @@ class ChoiceField(MultipleMixin, Field):
         attrs = self.attrs.copy()
         attrs['options'] = self.options.all()
         return attrs
-
-    def get_initial(self, instance):
-        initial = self.initial
-        if hasattr(initial, '__call__'):
-            initial = initial(instance)
-        if not initial:
-            initial = self.options.get_initial(instance)
-        return initial
 
     def value_from_instance(self, instance):
         # Delegate to options

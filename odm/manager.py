@@ -1,7 +1,7 @@
 from pulsar import Event, add_callback
 from pulsar.apps.data import Command
 
-from .query import AbstractQuery, Query, OdmError, QueryError, ModelNotFound
+from .query import Query
 from .errors import *
 
 
@@ -23,7 +23,46 @@ def do_pending_lookups(model, **kwargs):
 class_prepared.bind(do_pending_lookups)
 
 
-class Manager(AbstractQuery):
+class QueryMixin:
+
+    def __call__(self, *args, **kwargs):
+        '''Create a new model without committing to database.
+        '''
+        return self._store.create_model(self, *args, **kwargs)
+
+    def query(self):
+        '''Build a :class:`.Query` object
+        '''
+        return Query(self)
+
+    def filter(self, **kwargs):
+        '''Build a :class:`.Query` object with filtering clauses
+        '''
+        return self.query().filter(**kwargs)
+
+    def exclude(self, **kwargs):
+        return self.query().exclude(**kwargs)
+
+    def union(self, *queries):
+        return self.query().exclude(*queries)
+
+    def intersect(self, *queries):
+        return self.query().intersect(*queries)
+
+    def where(self, *expressions):
+        return self.query().where(*expressions)
+
+    def count(self):
+        return self.query().count()
+
+    def all(self):
+        return self.query().all()
+
+    def compile_query(self, query):
+        return self._read_store.compile_query(query)
+
+
+class Manager(QueryMixin):
     '''Used by the :class:`.Mapper` to link a data :class:`.Store` collection
     with a :class:`.Model`.
 
@@ -74,8 +113,6 @@ class Manager(AbstractQuery):
 
         The :class:`.Mapper` where this :class:`.Manager` is registered
     '''
-    query_class = Query
-
     def __init__(self, model, store=None, read_store=None, mapper=None):
         self._model = model
         self._store = store
@@ -99,11 +136,6 @@ class Manager(AbstractQuery):
             return '{0}({1})'.format(self.__class__.__name__, self._meta)
     __repr__ = __str__
 
-    def __call__(self, *args, **kwargs):
-        '''Create a new model without committing to database.
-        '''
-        return self._store.create_model(self, *args, **kwargs)
-
     def table_create(self, remove_existing=False):
         '''Create the table/collection for the :attr:`_model`
         '''
@@ -122,12 +154,6 @@ class Manager(AbstractQuery):
         '''Drop the table/collection for the :attr:`_model`
         '''
         return self._store.drop_table(self._model)
-
-    # QUERY IMPLEMENTATION
-    def query(self):
-        '''Build a :class:`.Query` object
-        '''
-        return self.query_class(self)
 
     def get(self, *args, **kw):
         '''Get a single model.
@@ -150,29 +176,6 @@ class Manager(AbstractQuery):
                 raise QueryError('Expected one model got %s' % len(data))
             else:
                 raise ModelNotFound
-
-    def filter(self, **kwargs):
-        '''Build a :class:`.Query` object with filtering clauses
-        '''
-        return self.query().filter(**kwargs)
-
-    def exclude(self, **kwargs):
-        return self.query().exclude(**kwargs)
-
-    def union(self, *queries):
-        return self.query().exclude(*queries)
-
-    def intersect(self, *queries):
-        return self.query().intersect(*queries)
-
-    def where(self, *expressions):
-        return self.query().where(*expressions)
-
-    def count(self):
-        return self.query().count()
-
-    def all(self):
-        return self.query().all()
 
     def begin(self):
         '''Begin a new :class:`.Transaction`.'''

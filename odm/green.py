@@ -3,6 +3,7 @@ from inspect import ismethod
 from pulsar.apps.greenio import wait
 
 from .mapper import Mapper
+from .manager import QueryMixin
 
 
 class GreenMapper(Mapper):
@@ -19,7 +20,7 @@ class GreenMapper(Mapper):
         return wait(super().table_drop())
 
 
-class GreenManager:
+class GreenObject:
 
     def __init__(self, manager):
         self.manager = manager
@@ -34,10 +35,11 @@ class GreenManager:
     def __str__(self):
         return self.manager.__str__()
 
-    def __call__(self, *args, **kwargs):
-        '''Create a new model without committing to database.
-        '''
-        return self._store.create_model(self, *args, **kwargs)
+
+class GreenManager(GreenObject, QueryMixin):
+
+    def compile_query(self, query):
+        return GreenObject(super().compile_query(query))
 
 
 class greentask:

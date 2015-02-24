@@ -31,6 +31,7 @@ class User(odm.Model):
     is_active = odm.BooleanField(default=True)
     can_login = odm.BooleanField(default=True)
     is_superuser = odm.BooleanField(default=False)
+    joined = odm.DateTimeField(default=lambda m: datetime.now())
 
 
 class Session(odm.Model):
@@ -226,3 +227,24 @@ class GreenOdmTests(unittest.TestCase):
         self.assertTrue(session.expiry)
         self.assertEqual(session.user_id, user.id)
         self.assertTrue(session.get(REV_KEY))
+
+    @greenpool
+    def test_filter_username(self):
+        mapper = self.mapper
+        user = mapper.user(username='kappa',
+                           email='kappa@test.com').save()
+        query = mapper.user.filter(username='kappa')
+        self.assertIsInstance(query, odm.Query)
+        users = query.all()
+        self.assertTrue(users)
+        self.assertEqual(len(users), 1)
+        user1 = users[0]
+        self.assertTrue(user1.get(REV_KEY))
+        self.assertEqual(user.id, user1.id)
+        #
+        # Test get filter
+        kappa = mapper.user.get(username='kappa')
+        self.assertEqual(kappa.username, 'kappa')
+        #
+        self.assertRaises(odm.ModelNotFound, mapper.user.get,
+                          username='kappaxxx')
