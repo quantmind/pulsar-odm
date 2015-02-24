@@ -277,20 +277,35 @@ class LazyForeignKey(LazyProxy):
     '''Descriptor for a :class:`.ForeignKey` field.
     '''
     def load(self, instance):
-        field = self.field
-        key = '_%s' % field.name
-        pk = instance.get(field.store_name)
-        if pk:
-            value = instance.get(key)
-            if value is not None:
-                if value.id == pk:
-                    return value
-                else:
+        mapper = instance.get('_mapper')
+        if mapper:
+            field = self.field
+            key = '_%s' % field.name
+            manager = mapper[field.relmodel]
+            pk = instance.get(field.store_name)
+            if pk:
+                value = instance.get(key)
+                if value is not None and value.id != pk:
+                    value = None
                     instance.pop(key)
-            mapper = instance.get('_mapper')
-            if mapper:
-                return add_callback(mapper[field.relmodel].get(pk),
-                                    lambda value: instance.set(key, value))
+            #
+            if isinstance(manager, Manager):
+                return self._async_load(manager, instance, key, pk, value)
+            else:
+                if pk and value is None:
+                    value = manager.get(pk)
+                    # set the value into the cache
+                    instance.set(key, value)
+                return value
+        else:
+            raise FieldError('Cannot load related model, no manager')
+
+    def _async_load(self, manager, instance, key, pk, value):
+        field = self.field
+        if pk and value is None:
+            value = yield from manager.get(pk)
+            instance.set(key, value)
+        return value
 
     def __set__(self, instance, value):
         if instance is None:

@@ -88,3 +88,13 @@ class TestOdm(unittest.TestCase):
         self.assertTrue('expiry' in data)
         expiry = data['expiry']
         self.assertTrue(expiry.tzinfo)
+
+    def test_choice_field(self):
+        choice = odm.ChoiceField()
+        self.assertFalse(choice.multiple)
+        choice = odm.ChoiceField(multiple=True)
+        self.assertTrue(choice.multiple)
+        language = User._meta.dfields['language']
+        self.assertFalse(language.multiple)
+        self.assertEqual(language.html_name(), 'language')
+

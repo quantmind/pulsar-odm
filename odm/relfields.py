@@ -39,16 +39,8 @@ class ForeignKey(Field):
         self.relmodel = model
         self.related_name = related_name
 
-    def register_with_related_model(self):
-        # add the RelatedManager proxy to the model holding the field
-        setattr(self._meta.model, self.name, self.proxy_class(self))
-        # self._meta.related[self.name] =
-        load_relmodel(self, self._set_relmodel)
-
     def _set_relmodel(self, relmodel, **kw):
         self._relmeta = meta = relmodel._meta
-        if not self.related_name:
-            self.related_name = '%s_%s_set' % (self._meta.name, self.name)
         if (self.related_name not in meta.related and
                 self.related_name not in meta.dfields):
             self._relmeta.related[self.related_name] = self
@@ -77,9 +69,13 @@ class ForeignKey(Field):
             return value
 
     def register_with_model(self, name, model):
-        super(ForeignKey, self).register_with_model(name, model)
+        super().register_with_model(name, model)
         if not model._meta.abstract:
-            self.register_with_related_model()
+            if not self.related_name:
+                self.related_name = '%s_%s_set' % (model._meta.name, self.name)
+            # add the RelatedManager proxy to the model holding the field
+            setattr(model, self.name, self.proxy_class(self))
+            load_relmodel(self, self._set_relmodel)
 
 
 class CompositeIdField(Field):
@@ -113,7 +109,7 @@ class CompositeIdField(Field):
             field = model._meta.dfields[field]
             fields.append(field)
         self.fields = tuple(fields)
-        return super(CompositeIdField, self).register_with_model(name, model)
+        super().register_with_model(name, model)
 
 
 class ManyToManyField(Field):
@@ -165,9 +161,9 @@ argument.
     def todelete(self):
         return False
 
-    def add_to_fields(self):
+    def add_to_fields(self, meta):
         # A many to many field is a dummy field. All it does it provides a
         # proxy for the through model. Remove it from the fields dictionary
         # and addit to the list of many_to_many
-        self._meta.dfields.pop(self.name)
-        self._meta.manytomany.append(self.name)
+        meta.dfields.pop(self.name)
+        meta.manytomany.append(self.name)

@@ -32,6 +32,8 @@ class User(odm.Model):
     can_login = odm.BooleanField(default=True)
     is_superuser = odm.BooleanField(default=False)
     joined = odm.DateTimeField(default=lambda m: datetime.now())
+    language = odm.ChoiceField(options=('italian', 'french', 'english',
+                                        'spanish'))
 
 
 class Session(odm.Model):
@@ -122,6 +124,7 @@ class OdmTests(unittest.TestCase):
         session2 = yield from session.save()
         self.assertEqual(session2, session)
         self.assertEqual(session2.test, 'this is just a test')
+        self.assertEqual(session2.user_id, user.id)
 
     def test_get_session(self):
         mapper = self.mapper
@@ -132,6 +135,13 @@ class OdmTests(unittest.TestCase):
         session = yield from mapper.session.get(id)
         self.assertEqual(session.id, id)
         self.assertTrue(session.get(REV_KEY))
+        self.assertEqual(session.user_id, user.id)
+        self.assertFalse('_user' in session)
+        user1 = yield from session.user
+        self.assertEqual(user1, user)
+        self.assertTrue('_user' in session)
+        user2 = yield from session.user
+        self.assertEqual(user2, user)
 
     def test_not_found(self):
         mapper = self.mapper
@@ -227,6 +237,23 @@ class GreenOdmTests(unittest.TestCase):
         self.assertTrue(session.expiry)
         self.assertEqual(session.user_id, user.id)
         self.assertTrue(session.get(REV_KEY))
+
+    @greenpool
+    def test_get_session(self):
+        mapper = self.mapper
+        user = mapper.user(username='lsbardel3').save()
+        session = mapper.session(user=user, test='hello').save()
+        id = session.id
+        session = mapper.session.get(id)
+        self.assertEqual(session.id, id)
+        self.assertTrue(session.get(REV_KEY))
+        self.assertEqual(session.user_id, user.id)
+        self.assertFalse('_user' in session)
+        user1 = session.user
+        self.assertEqual(user1, user)
+        self.assertTrue('_user' in session)
+        user2 = session.user
+        self.assertEqual(user2, user)
 
     @greenpool
     def test_filter_username(self):

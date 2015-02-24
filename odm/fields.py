@@ -10,6 +10,7 @@ from pulsar.utils.html import NOTHING, escape
 from pulsar.utils.pep import to_string
 from pulsar.apps.wsgi import Html
 
+from .options import *
 from .errors import *
 
 
@@ -63,19 +64,19 @@ class ModelMixin(object):
         assert not self.name, 'Field %s is already registered' % self
         self.name = name
         self.store_name = self.get_store_name()
-        self._meta = meta = model._meta
+        meta = model._meta
         meta.dfields[name] = self
         meta.converters[name] = self.clean
         if self.primary_key:
             meta.pk = self
-        self.add_to_fields()
+        self.add_to_fields(meta)
 
-    def add_to_fields(self):
+    def add_to_fields(self, meta):
         '''Add this :class:`Field` to the fields of :attr:`model`.
         '''
-        self._meta.scalarfields.append(self)
+        meta.scalarfields.append(self)
         if self.index:
-            self._meta.indexes.append(self)
+            meta.indexes.append(self)
 
     def get_store_name(self):
         '''Generate the :attr:`store_name` at runtime'''
@@ -141,7 +142,7 @@ class Field(ModelMixin):
     def __init__(self, unique=False, primary_key=None, required=None,
                  index=False, default=None,
                  validation_error=None, help_text=None,
-                 label=None, widget=None, widget_attrs=None,
+                 label=None, widget=None, attrs=None,
                  attrname=None, wrong_value_message=None,
                  **kwargs):
         self.name = attrname
@@ -168,7 +169,7 @@ class Field(ModelMixin):
         if widget:
             self.widget = lambda *args, **kwargs: widget(self, *args, **kwargs)
         self.attrs = dict(self.attrs or ())
-        self.attrs.update(widget_attrs or ())
+        self.attrs.update(attrs or ())
         self.attrs['required'] = self.required
         if label:
             self.attrs['label'] = label
@@ -180,14 +181,6 @@ class Field(ModelMixin):
     def __repr__(self):
         return self.name if self.name else self.__class__.__name__
     __str__ = __repr__
-
-    def set_name(self, name):
-        self.name = name
-        if not self.label:
-            self.label = name
-
-    def getattrs(self):
-        return self.attrs.copy()
 
     def handle_params(self, validator=None, **kwargs):
         '''Called during initialization for handling extra key-valued
@@ -246,8 +239,8 @@ class Field(ModelMixin):
     def to_store(self, value, store):
         return value
 
-    def html_name(self, name):
-        return name
+    def html_name(self, prefix=None):
+        return '%s%s' % (prefix, self.name) if prefix else self.name
 
     def html(self, bfield, **kwargs):
         '''Create the Html element for this :class:`Field`.'''
@@ -375,13 +368,14 @@ class BooleanField(Field):
             return bool(value)
 
 
-class MultipleMixin(Field):
+class MultipleMixin:
 
     @property
     def multiple(self):
         return bool(self.attrs.get('multiple'))
 
-    def html_name(self, name):
+    def html_name(self, prefix=None):
+        name = super().html_name(prefix)
         return name if not self.multiple else '%s[]' % name
 
     def value_from_datadict(self, data, files, key):
@@ -395,7 +389,7 @@ class MultipleMixin(Field):
                 return data[key]
 
 
-class ChoiceField(MultipleMixin, Field):
+class ChoiceField(Field, MultipleMixin):
     '''A :class:`Field` which validates against a set of ``options``.
 
     It has several additional attributes which can be specified
@@ -422,9 +416,9 @@ class ChoiceField(MultipleMixin, Field):
         '''options is an iterable or a callable which takes bound field
         as only argument'''
         if not isinstance(options, Options):
-            options = Options(options, **kwargs)
+            options = Options(options)
         self.options = options
-        super(ChoiceField, self).handle_params(**kwargs)
+        super().handle_params(**kwargs)
 
     def _clean(self, value, instance):
         if value is not None:
