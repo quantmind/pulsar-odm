@@ -1,7 +1,8 @@
+import os
 
 try:
     import tables as tb
-except ImportError:
+except ImportError:     # pragma    nocover
     tb = None
 
 
@@ -10,22 +11,47 @@ import odm
 
 class PyTablesStore(odm.Store):
 
-    @property
-    def registered(self):
-        return tables is not None
+    @classmethod
+    def register(cls):
+        assert tb is not None, 'Requires pytables'
 
-    def create_database(self, dbname=None, **kw):
+    def database_create(self, dbname=None, **kw):
         dbname = dbname or self._database
         if dbname:
-            dbname = os.path.join(self)
+            dbname = os.path.join(self.dbpath, dbname)
             if self._h5f:
                 self._h5f.close()
-            self._h5f = tables.open_file('%s.h5' % dbname, 'w')
+            dbname = '%s.h5' % dbname
+            self._h5f = tb.open_file(dbname, 'w')
         else:
             raise ValueError('No database specified')
+        return dummy_coro(dbname)
+
+    def database_drop(self, dbname=None, **kw):
+        dbname = dbname or self._database
+        if dbname:
+            dbname = os.path.join(self.dbpath, dbname)
+            dbname = '%s.h5' % dbname
+            if self._h5f and self._h5f.filename == dbname:
+                self._h5f.close()
+                self._h5f = None
+            os.remove(dbname)
+        else:
+            raise ValueError('No database specified')
+        return dummy_coro(dbname)
 
     def create_table(self, ):
         tbl = h5f.create_table('/', 'table_name', description_name)
+
+    def _init(self, dbpath='', **kwargs):
+        self._h5f = None
+        self.dbpath = dbpath
+
+
+def dummy_coro(result=None):
+    if False:
+        yield None
+    return result
 
 
 odm.register_store("pytables", "odm.backends._pytables.PyTablesStore")

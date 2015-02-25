@@ -4,14 +4,14 @@ from odm import create_store
 
 from rethinkdb import RqlRuntimeError
 
-from tests import data
+from tests.data.tests import randomname
 
 
 class RethinDbTest(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.dbname = data.randomname()
+        cls.dbname = randomname()
         cls.store = create_store('rethinkdb://127.0.0.1:28015')
         yield from cls.store.database_create(cls.dbname)
 
@@ -29,7 +29,7 @@ class RethinDbTest(unittest.TestCase):
 
     def test_all_create_drop_database(self):
         store = create_store('rethinkdb://127.0.0.1:28015')
-        name = data.randomname()
+        name = randomname()
         dbname = yield from store.database_create(name)
         self.assertEqual(store.database, name)
         dblist = yield from store.database_all()
@@ -53,7 +53,7 @@ class RethinDbTest(unittest.TestCase):
         store = self.store
         tables = yield from store.table_all()
         self.assertIsInstance(tables, list)
-        name = data.randomname()
+        name = randomname()
         self.assertFalse(name in tables)
         # Create a table
         table = yield from store.table_create(name)

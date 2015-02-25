@@ -1,4 +1,4 @@
-pulsar
 greenlet
+pulsar
 pytz
 python-dateutil

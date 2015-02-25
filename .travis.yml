@@ -22,7 +22,7 @@ before_script:
   - sleep 5
 
 script:
-  - pep8 odm tests
+  - pep8
   - sudo rm -rf odm
   - python -m runtests --coverage
   - python -m runtests --coveralls

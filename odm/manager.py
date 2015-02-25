@@ -279,6 +279,7 @@ class LazyForeignKey(LazyProxy):
     def load(self, instance):
         mapper = instance.get('_mapper')
         if mapper:
+            value = None
             field = self.field
             key = '_%s' % field.name
             manager = mapper[field.relmodel]

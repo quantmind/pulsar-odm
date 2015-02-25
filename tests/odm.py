@@ -2,19 +2,10 @@ import unittest
 from datetime import datetime
 from collections import Mapping
 
-import pytz
-
 import odm
 from odm.model import ModelType
 
-from .data import User, Session
-from django.core.exceptions import FieldError
-
-
-class NoStr:
-
-    def __str__(self):
-        raise Exception
+from .data.models import User, Session
 
 
 class TestOdm(unittest.TestCase):
@@ -50,51 +41,25 @@ class TestOdm(unittest.TestCase):
             foo=odm.IntegerField(primary_key=True),
             bla=odm.CharField(primary_key=True))
 
-    def test_char_field(self):
-        user = User(username='pippo', bla='foo')
-        user['username'] = 78
-        self.assertEqual(user.username, '78')
+    def test_dummy_store(self):
+        mapper = odm.Mapper('dummy://')
+        self.assertEqual(mapper.default_store.name, 'dummy')
+        self.assertTrue(repr(mapper))
+        self.assertRaises(AttributeError, lambda: mapper.user)
 
-        def _():
-            user['username'] = NoStr()
-            value = user.username
+    def test_register_applications(self):
+        mapper = odm.Mapper('dummy://')
+        models = mapper.register_applications(['tests.data'])
+        self.assertEqual(len(models), 3)
+        self.assertEqual(len(mapper), 3)
 
-        self.assertRaises(odm.ValidationError, _)
-
-    def test_datetime_field(self):
-        session = Session()
-        self.assertFalse(session)
-        self.assertEqual(session.expiry, None)
-        self.assertRaises(KeyError, lambda: session['expiry'])
-        #
-        # Get store data
-        store = odm.create_store('dummy://')
-        data, action = store.model_data(session)
-        self.assertEqual(action, odm.Command.INSERT)
-        self.assertEqual(len(data), 1)
-        self.assertTrue('expiry' in data)
-        expiry = data['expiry']
-        self.assertTrue(expiry.tzinfo)
-
-        dt = datetime.now()
-        session = Session(expiry=dt)
-        self.assertNotEqual(session.expiry, dt)
-        self.assertEqual(session.expiry, pytz.utc.localize(dt))
-        #
-        session = Session(expiry=dt)
-        data, action = store.model_data(session)
-        self.assertEqual(action, odm.Command.INSERT)
-        self.assertEqual(len(data), 1)
-        self.assertTrue('expiry' in data)
-        expiry = data['expiry']
-        self.assertTrue(expiry.tzinfo)
-
-    def test_choice_field(self):
-        choice = odm.ChoiceField()
-        self.assertFalse(choice.multiple)
-        choice = odm.ChoiceField(multiple=True)
-        self.assertTrue(choice.multiple)
-        language = User._meta.dfields['language']
-        self.assertFalse(language.multiple)
-        self.assertEqual(language.html_name(), 'language')
-
+    def test_unregister_models(self):
+        mapper = odm.Mapper('dummy://')
+        models = mapper.register_applications('tests.data')
+        self.assertEqual(len(models), 3)
+        self.assertEqual(len(mapper), 3)
+        models = mapper.unregister()
+        self.assertEqual(len(models), 3)
+        self.assertEqual(len(mapper), 0)
+        result = yield from mapper.flush()
+        self.assertFalse(result)

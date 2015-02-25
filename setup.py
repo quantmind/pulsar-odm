@@ -7,23 +7,24 @@ from distutils.command.install_data import install_data
 from distutils.command.install import INSTALL_SCHEMES
 
 
+package_name = 'odm'
+package_fullname = 'pulsar-odm'
+os.environ['pulsar_odm_setup'] = 'running'
+root_dir = os.path.dirname(os.path.abspath(__file__))
+package_dir = os.path.join(root_dir, package_name)
+odm = __import__(package_name)
+
+
 def read(fname):
     with open(os.path.join(root_dir, fname)) as f:
         return f.read()
 
 
-os.environ['pulsar_odm_setup'] = 'running'
-package_name = 'odm'
-root_dir = os.path.dirname(os.path.abspath(__file__))
-package_dir = os.path.join(root_dir, package_name)
-
-import odm
-
 def requirements():
-    req = read('requirements.txt').replace('\r','').split('\n')
+    req = read('requirements.txt').replace('\r', '').split('\n')
     result = []
     for r in req:
-        r = r.replace(' ','')
+        r = r.replace(' ', '')
         if r:
             result.append(r)
     return result
@@ -56,14 +57,15 @@ def fullsplit(path, result=None):
         return result
     return fullsplit(head, [tail] + result)
 
+
 # Compile the list of packages available, because distutils doesn't have
 # an easy way to do this.
 def get_rel_dir(d, base, res=''):
     if d == base:
         return res
-    br,r = os.path.split(d)
+    br, r = os.path.split(d)
     if res:
-        r = os.path.join(r,res)
+        r = os.path.join(r, res)
     return get_rel_dir(br, base, r)
 
 packages, data_files = [], []
@@ -94,8 +96,7 @@ def run(argv=None):
     else:
         params['cmdclass']['install_data'] = install_data
 
-
-    setup(name=package_name,
+    setup(name=package_fullname,
           version=odm.__version__,
           author=odm.__author__,
           author_email=odm.__contact__,
@@ -110,7 +111,6 @@ def run(argv=None):
                        'Intended Audience :: Developers',
                        'License :: OSI Approved :: BSD License',
                        'Operating System :: OS Independent',
-                       'Programming Language :: JavaScript',
                        'Programming Language :: Python',
                        'Programming Language :: Python :: 3.4',
                        'Topic :: Utilities'],

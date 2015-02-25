@@ -1,5 +1,6 @@
 from inspect import ismodule
 from importlib import import_module
+import asyncio
 
 from pulsar import EventHandler, multi_async, task
 
@@ -54,7 +55,8 @@ class Mapper(EventHandler):
 
     def __init__(self, default_store, **kw):
         store = create_store(default_store, **kw)
-        super(Mapper, self).__init__(store._loop)
+        loop = getattr(store, '_loop', None) or asyncio.get_event_loop()
+        super(Mapper, self).__init__(loop)
         self._registered_models = ModelDictionary()
         self._registered_names = {}
         self._default_store = store
@@ -157,23 +159,6 @@ class Mapper(EventHandler):
                 self._register(manager)
         return registered[0] if len(registered) == 1 else registered
 
-    def from_uuid(self, uuid, session=None):
-        '''Retrieve a :class:`.Model` from its universally unique identifier
-        ``uuid``.
-
-        If the ``uuid`` does not match any instance an exception will raise.
-        '''
-        elems = uuid.split('.')
-        if len(elems) == 2:
-            model = get_model_from_hash(elems[0])
-            if not model:
-                raise Model.DoesNotExist(
-                    'model id "{0}" not available'.format(elems[0]))
-            if not session or session.mapper is not self:
-                session = self.session()
-            return session.query(model).get(id=elems[1])
-        raise Model.DoesNotExist('uuid "{0}" not recognized'.format(uuid))
-
     def flush(self, exclude=None, include=None, dryrun=False):
         '''Flush :attr:`registered_models`.
 
@@ -192,11 +177,11 @@ class Mapper(EventHandler):
                 continue
             if not (m.table_name in exclude or m.app_label in exclude):
                 if dryrun:
-                    result = yield manager.query().count()
+                    result = yield from manager.query().count()
                 else:
-                    result = yield manager.query().delete()
+                    result = yield from manager.query().delete()
                 results.append((manager, result))
-        coroutine_return(results)
+        return results
 
     def unregister(self, model=None):
         '''Unregister a ``model`` if provided, otherwise it unregister all

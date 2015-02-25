@@ -13,6 +13,6 @@ htmlcov
 #python
 *.pyc
 __pycache__
-odm.egg-info
+pulsar_odm.egg-info
 build
 dist

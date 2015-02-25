@@ -1,9 +1,9 @@
-from tests import data
+from tests.data import tests
 
 from odm import create_store
 
 
-class RethinDbGreenOdmTest(data.GreenOdmTests):
+class RethinDbGreenOdmTest(tests.GreenOdmTests):
 
     @classmethod
     def create_store(cls):
