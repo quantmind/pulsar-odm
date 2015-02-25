@@ -28,7 +28,7 @@ class RethinkDbQuery(CompiledQuery):
 
     def delete(self):
         deleted = yield from self._manager._store.execute(self._term.delete())
-        return deleted
+        return deleted.get('deleted')
 
     def _build_term(self, aggregated):
         table = ast.Table(self._meta.table_name)

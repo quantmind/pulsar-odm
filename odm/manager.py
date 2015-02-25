@@ -129,26 +129,32 @@ class Manager(QueryMixin):
 
     def __str__(self):
         if self._store:
-            return '{0}({1} - {2})'.format(self.__class__.__name__,
-                                           self._meta,
-                                           self._store)
+            return '%s - %s' % (self._meta, self._store)
         else:
-            return '{0}({1})'.format(self.__class__.__name__, self._meta)
-    __repr__ = __str__
+            return str(self._meta)
+
+    def __repr__(self):
+        return '%s(%s)' % (self.__class__.__name__, self)
 
     def table_create(self, remove_existing=False):
         '''Create the table/collection for the :attr:`_model`
         '''
         list = yield from self._store.table_all()
         tablename = self._meta.table_name
+        created = False
         if list and tablename in list:
             if remove_existing:
                 yield from self._store.table_drop(tablename)
-                yield from self._store.table_create(tablename)
+                created = True
         else:
+            created = True
+
+        if created:
             yield from self._store.table_create(tablename)
         if self._mapper.search_engine:
             yield from self._mapper.search_engine.create_table(self)
+
+        return created
 
     def drop_table(self):
         '''Drop the table/collection for the :attr:`_model`
