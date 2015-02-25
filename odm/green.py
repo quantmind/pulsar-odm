@@ -19,6 +19,9 @@ class GreenMapper(Mapper):
     def table_drop(self):
         return wait(super().table_drop())
 
+    def commit(self, transaction):
+        return wait(super().commit(transaction))
+
 
 class GreenObject:
 

@@ -2,7 +2,7 @@ from inspect import ismodule
 from importlib import import_module
 import asyncio
 
-from pulsar import EventHandler, multi_async, task
+from pulsar import EventHandler, InvalidOperation
 
 from odm import create_store
 
@@ -246,6 +246,16 @@ class Mapper(EventHandler):
         :meth:`.Manager.drop_table` method.'''
         for manager in self:
             yield from manager.table_drop()
+
+    def commit(self, transaction):
+        if transaction._executed is None:
+            transaction._executed = {}
+            for store, commands in transaction._commands.items():
+                executed = yield from store.execute_transaction(commands)
+                transaction._executed[store] = executed
+            return transaction
+        else:
+            raise InvalidOperation('Transaction already executed.')
 
     # PRIVATE METHODS
     def _register_applications(self, applications, models, stores):

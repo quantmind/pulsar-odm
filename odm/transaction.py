@@ -1,4 +1,4 @@
-from pulsar import EventHandler, InvalidOperation, chain_future, multi_async
+from pulsar import EventHandler, chain_future, multi_async
 
 from .model import Model, Command
 
@@ -130,10 +130,4 @@ class Transaction(EventHandler):
         :return: a :class:`~asyncio.Future` which results in the list
             of  transaction
         '''
-        if self._executed is None:
-            self._executed = {}
-            for store, commands in self._commands.items():
-                executed = yield from store.execute_transaction(commands)
-                self._executed[store] = executed
-        else:
-            raise InvalidOperation('Transaction already executed.')
+        return self.mapper.commit(self)

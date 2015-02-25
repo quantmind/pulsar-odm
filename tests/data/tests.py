@@ -2,7 +2,7 @@ import unittest
 import string
 from functools import wraps
 
-from pulsar.apps.test import random_string
+from pulsar.apps.test import random_string, populate
 from pulsar.apps.greenio import GreenPool
 
 import odm
@@ -156,6 +156,11 @@ class OdmTests(unittest.TestCase):
                                            mapper.user.get,
                                            username='kappaxxx')
 
+    def test_count(self):
+        mapper = self.mapper
+        N = yield from mapper.user.count()
+        self.assertTrue(N >= 0)
+
 
 def greenpool(test):
 
@@ -246,3 +251,26 @@ class GreenOdmTests(unittest.TestCase):
         #
         self.assertRaises(odm.ModelNotFound, mapper.user.get,
                           username='kappaxxx')
+
+    @greenpool
+    def test_count(self):
+        mapper = self.mapper
+        N = mapper.user.count()
+        self.assertTrue(N >= 0)
+
+    @greenpool
+    def test_create_many(self):
+        blog = self.mapper.blog
+        self.assertEqual(blog.count(), 0)
+        with blog.begin() as t:
+            for title, body in zip(populate(size=10),
+                                   populate(size=10, min_length=100,
+                                            max_length=1000)):
+                t.add(blog(title=title, body=body))
+
+        self.assertEqual(blog.count(), 10)
+
+        # delete all
+        blog.query().delete()
+        self.assertEqual(blog.count(), 0)
+

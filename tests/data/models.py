@@ -30,4 +30,4 @@ class Session(odm.Model):
 class Blog(odm.Model):
     published = odm.DateField()
     title = odm.CharField()
-    body = odm.CharField()
+    body = odm.TextField()

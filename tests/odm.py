@@ -63,3 +63,10 @@ class TestOdm(unittest.TestCase):
         self.assertEqual(len(mapper), 0)
         result = yield from mapper.flush()
         self.assertFalse(result)
+
+    def test_query(self):
+        mapper = odm.Mapper('dummy://')
+        mapper.register_applications('tests.data')
+        query = mapper.user.query()
+        self.assertEqual(query._mapper, mapper)
+        self.assertEqual(query._loop, None)

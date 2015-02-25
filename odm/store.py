@@ -11,6 +11,7 @@ __all__ = ['Store', 'RemoteStore', 'create_store',
 
 
 class OdmMixin:
+    _loop = None
 
     def create_model(self, manager, *args, **kwargs):
         '''Create a new model from a ``manager``
