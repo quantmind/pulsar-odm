@@ -273,4 +273,3 @@ class GreenOdmTests(unittest.TestCase):
         # delete all
         blog.query().delete()
         self.assertEqual(blog.count(), 0)
-

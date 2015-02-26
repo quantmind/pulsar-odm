@@ -8,12 +8,12 @@ import odm
 from odm.store import REV_KEY
 
 try:
-    import rethinkdb
     from rethinkdb import ast
     from .protocol import Connection, Consumer, start_query
     from .query import RethinkDbQuery
+    rethinkdbProtocol = partial(Connection, Consumer)
 except ImportError:     # pragma    nocover
-    rethinkdb = None
+    rethinkdbProtocol = None
 
 
 Command = odm.Command
@@ -22,16 +22,19 @@ Command = odm.Command
 class RethinkDB(odm.RemoteStore):
     '''RethinkDB asynchronous data store
     '''
-    protocol_factory = partial(Connection, Consumer)
+    protocol_factory = rethinkdbProtocol
 
     @property
     def registered(self):
-        return rethinkdb is not None
+        return rethinkdbProtocol is not None
 
     # Database API
     def database_create(self, dbname=None, **kw):
         '''Create a new database
         '''
+        dbname = dbname or self.database
+        if not dbname:
+            raise ValueError('Database name must be specified')
         term = ast.DbCreate(dbname or self.database)
         result = yield from self.execute(term, **kw)
         assert result['dbs_created'] == 1

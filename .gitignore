@@ -16,3 +16,4 @@ __pycache__
 pulsar_odm.egg-info
 build
 dist
+rethinkclear.py
