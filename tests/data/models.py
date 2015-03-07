@@ -10,7 +10,7 @@ def default_expiry(model):
 class User(odm.Model):
     # username = odm.CharField(unique=True)
     username = odm.CharField()
-    password = odm.CharField(required=False, hidden=True)
+    password = odm.PasswordField(required=False, hidden=True)
     first_name = odm.CharField(required=False, index=True)
     last_name = odm.CharField(required=False, index=True)
     email = odm.CharField(required=False, unique=True)

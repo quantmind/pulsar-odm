@@ -360,11 +360,10 @@ class Model(dict, metaclass=ModelType):
         if kwargs:
             super().update(self._update_modify(kwargs))
 
-    def to_json(self):
+    def todict(self):
         '''Return a JSON serialisable dictionary representation.
         '''
         return dict(self._to_json())
-    todict = to_json
 
     def save(self):
         '''Commit changes to backend data store.
@@ -389,19 +388,19 @@ class Model(dict, metaclass=ModelType):
         pk = self.get('id')
         if pk:
             yield self._meta.pk.name, pk
-            for key in self:
-                if not is_private_field(key):
-                    value = self[key]
-                    if value is not None:
-                        if key in self._meta.dfields:
-                            value = self._meta.dfields[key].to_json(value)
-                        elif isinstance(value, bytes):
-                            try:
-                                value = value.decode('utf-8')
-                            except Exception:
-                                value = b64encode(value).decode('utf-8')
-                        if value:
-                            yield key, value
+        for key in self:
+            if not is_private_field(key):
+                value = self[key]
+                if value is not None:
+                    if key in self._meta.dfields:
+                        value = self._meta.dfields[key].to_json(value)
+                    elif isinstance(value, bytes):
+                        try:
+                            value = value.decode('utf-8')
+                        except Exception:
+                            value = b64encode(value).decode('utf-8')
+                    if value:
+                        yield key, value
 
     def _update_modify(self, iterable):
         for field, value in mapping_iterator(iterable):

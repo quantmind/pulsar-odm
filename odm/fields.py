@@ -239,6 +239,9 @@ class Field(ModelMixin):
     def to_store(self, value, store):
         return value
 
+    def to_json(self, value):
+        return value
+
     def html_name(self, prefix=None):
         return '%s%s' % (prefix, self.name) if prefix else self.name
 
@@ -338,6 +341,9 @@ class DateField(IntegerField):
             value = value.date()
         return value
 
+    def to_json(self, value):
+        return value.isoformat()
+
 
 class DateTimeField(DateField):
     attrs = {'type': 'datetime'}
@@ -432,7 +438,13 @@ class EmailField(CharField):
     attrs = {'type': 'email'}
 
 
-class PasswordField(CharField):
+class HiddenField(CharField):
+
+    def to_json(self, value):
+        pass
+
+
+class PasswordField(HiddenField):
     attrs = {'type': 'password'}
 
 

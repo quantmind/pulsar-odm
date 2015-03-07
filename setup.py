@@ -90,4 +90,3 @@ if __name__ == '__main__':
                        'Programming Language :: Python',
                        'Programming Language :: Python :: 3.4',
                        'Topic :: Utilities'])
-

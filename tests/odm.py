@@ -1,4 +1,5 @@
 import unittest
+import json
 from datetime import datetime
 from collections import Mapping
 
@@ -70,3 +71,16 @@ class TestOdm(unittest.TestCase):
         query = mapper.user.query()
         self.assertEqual(query._mapper, mapper)
         self.assertEqual(query._loop, None)
+
+    def test_to_dict(self):
+        mapper = odm.Mapper('dummy://')
+        mapper.register_applications(['tests.data'])
+        user = mapper.user(username='pippo', bla='foo', password='bjhvbdfjv')
+        self.assertTrue(user)
+        data = user.todict()
+        self.assertEqual(len(data), 2)
+        data, _ = mapper.user._store.model_data(user)
+        self.assertTrue(len(data) > 2)
+        data = user.todict()
+        self.assertEqual(len(data), 5)
+        json.dumps(data)
