@@ -364,6 +364,7 @@ class Model(dict, metaclass=ModelType):
         '''Return a JSON serialisable dictionary representation.
         '''
         return dict(self._to_json())
+    todict = to_json
 
     def save(self):
         '''Commit changes to backend data store.
@@ -399,7 +400,8 @@ class Model(dict, metaclass=ModelType):
                                 value = value.decode('utf-8')
                             except Exception:
                                 value = b64encode(value).decode('utf-8')
-                        yield key, value
+                        if value:
+                            yield key, value
 
     def _update_modify(self, iterable):
         for field, value in mapping_iterator(iterable):

@@ -3,8 +3,6 @@ import sys
 import json
 
 from setuptools import setup
-from distutils.command.install_data import install_data
-from distutils.command.install import INSTALL_SCHEMES
 
 
 package_name = 'odm'
@@ -28,19 +26,6 @@ def requirements():
         if r:
             result.append(r)
     return result
-
-
-class osx_install_data(install_data):
-
-    def finalize_options(self):
-        self.set_undefined_options('install', ('install_lib', 'install_dir'))
-        install_data.finalize_options(self)
-
-
-# Tell distutils to put the data_files in platform-specific installation
-# locations. See here for an explanation:
-for scheme in INSTALL_SCHEMES.values():
-    scheme['data'] = scheme['purelib']
 
 
 def fullsplit(path, result=None):
@@ -83,18 +68,7 @@ for dirpath, _, filenames in os.walk(package_dir):
         data_files.extend((os.path.join(rel_dir, f) for f in filenames))
 
 
-def run(argv=None):
-    if argv:
-        sys.argv = list(argv)
-    argv = sys.argv
-    command = argv[1] if len(argv) > 1 else None
-    params = {'cmdclass': {}}
-    if command != 'sdist':
-        params['install_requires'] = requirements()
-    if sys.platform == "darwin":
-        params['cmdclass']['install_data'] = osx_install_data
-    else:
-        params['cmdclass']['install_data'] = install_data
+if __name__ == '__main__':
 
     setup(name=package_fullname,
           version=odm.__version__,
@@ -105,7 +79,9 @@ def run(argv=None):
           description=odm.__doc__,
           long_description=read('README.rst'),
           packages=packages,
+          package_dir={package_name: package_name},
           package_data={package_name: data_files},
+          install_requires=requirements(),
           classifiers=['Development Status :: 2 - Pre-Alpha',
                        'Environment :: Web Environment',
                        'Intended Audience :: Developers',
@@ -113,9 +89,5 @@ def run(argv=None):
                        'Operating System :: OS Independent',
                        'Programming Language :: Python',
                        'Programming Language :: Python :: 3.4',
-                       'Topic :: Utilities'],
-          **params)
+                       'Topic :: Utilities'])
 
-
-if __name__ == '__main__':
-    run()
