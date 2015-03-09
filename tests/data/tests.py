@@ -9,6 +9,7 @@ import odm
 from odm.store import REV_KEY
 from odm.green import GreenMapper
 from odm.errors import QueryError
+from odm.mapper import valid_model
 
 from .models import User, Session, Blog
 
@@ -53,7 +54,7 @@ class OdmTests(unittest.TestCase):
         for manager in managers:
             self.assertIsInstance(manager, odm.Manager)
         self.assertEqual(mapper.default_store, self.store)
-        self.assertFalse(mapper.valid_model({}))
+        self.assertFalse(valid_model({}))
         self.assertTrue(User in mapper)
         self.assertTrue(User._meta in mapper)
         self.assertTrue(str(mapper))

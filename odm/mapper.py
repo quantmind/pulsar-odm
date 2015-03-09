@@ -147,7 +147,7 @@ class Mapper(EventHandler):
             read_store = create_store(read_store, *params)
         registered = []
         for model in models:
-            for model in self.models_from_model(
+            for model in models_from_model(
                     model, include_related=include_related):
                 if model in self._registered_models:
                     continue
@@ -260,7 +260,7 @@ class Mapper(EventHandler):
     # PRIVATE METHODS
     def _register_applications(self, applications, models, stores):
         stores = stores or {}
-        for model in self.model_iterator(applications):
+        for model in model_iterator(applications):
             name = str(model._meta)
             if models and name not in models:
                 continue
@@ -274,78 +274,80 @@ class Mapper(EventHandler):
             if self.register(model, include_related=False, **kwargs):
                 yield model
 
-    def valid_model(self, model):
-        if isinstance(model, ModelType):
-            return not model._meta.abstract
-        return False
-
-    def models_from_model(self, model, include_related=False, exclude=None):
-        '''Generator of all model in model.
-
-        :param model: a :class:`.Model`
-        :param include_related: if ``True`` al related models to ``model``
-            are included
-        :param exclude: optional set of models to exclude
-        '''
-        if exclude is None:
-            exclude = set()
-        if self.valid_model(model) and model not in exclude:
-            exclude.add(model)
-            yield model
-            if include_related:
-                for column in model._meta.dfields.values():
-                    for fk in column.foreign_keys:
-                        for model in (fk.column.table,):
-                            for m in self.models_from_model(
-                                    model, include_related=include_related,
-                                    exclude=exclude):
-                                yield m
-
-    def model_iterator(self, application, include_related=True, exclude=None):
-        '''A generator of :class:`.Model` classes found in *application*.
-
-        :parameter application: A python dotted path or an iterable over
-            python dotted-paths where models are defined.
-
-        Only models defined in these paths are considered.
-        '''
-        if exclude is None:
-            exclude = set()
-        if ismodule(application) or isinstance(application, str):
-            if ismodule(application):
-                mod, application = application, application.__name__
-            else:
-                try:
-                    mod = import_module(application)
-                except ImportError:
-                    # the module is not there
-                    mod = None
-            if mod:
-                label = application.split('.')[-1]
-                try:
-                    mod_models = import_module('.models', application)
-                except ImportError:
-                    mod_models = mod
-                label = getattr(mod_models, 'app_label', label)
-                models = set()
-                for name in dir(mod_models):
-                    value = getattr(mod_models, name)
-                    for model in self.models_from_model(
-                            value, include_related=include_related,
-                            exclude=exclude):
-                        if (model._meta.app_label == label and
-                                model not in models):
-                            models.add(model)
-                            yield model
-        else:
-            for app in application:
-                for m in self.model_iterator(app,
-                                             include_related=include_related,
-                                             exclude=exclude):
-                    yield m
-
     def _register(self, manager):
         model = manager._model
         self._registered_models[model] = manager
         if model._meta.name not in self._registered_names:
             self._registered_names[model._meta.name] = manager
+
+
+def valid_model(model):
+    if isinstance(model, ModelType):
+        return not model._meta.abstract
+    return False
+
+
+def models_from_model(model, include_related=False, exclude=None):
+    '''Generator of all model in model.
+
+    :param model: a :class:`.Model`
+    :param include_related: if ``True`` al related models to ``model``
+        are included
+    :param exclude: optional set of models to exclude
+    '''
+    if exclude is None:
+        exclude = set()
+    if valid_model(model) and model not in exclude:
+        exclude.add(model)
+        yield model
+        if include_related:
+            for column in model._meta.dfields.values():
+                for fk in column.foreign_keys:
+                    for model in (fk.column.table,):
+                        for m in models_from_model(
+                                model, include_related=include_related,
+                                exclude=exclude):
+                            yield m
+
+
+def model_iterator(application, include_related=True, exclude=None):
+    '''A generator of :class:`.Model` classes found in *application*.
+
+    :parameter application: A python dotted path or an iterable over
+        python dotted-paths where models are defined.
+
+    Only models defined in these paths are considered.
+    '''
+    if exclude is None:
+        exclude = set()
+    if ismodule(application) or isinstance(application, str):
+        if ismodule(application):
+            mod, application = application, application.__name__
+        else:
+            try:
+                mod = import_module(application)
+            except ImportError:
+                # the module is not there
+                mod = None
+        if mod:
+            label = application.split('.')[-1]
+            try:
+                mod_models = import_module('.models', application)
+            except ImportError:
+                mod_models = mod
+            label = getattr(mod_models, 'app_label', label)
+            models = set()
+            for name in dir(mod_models):
+                value = getattr(mod_models, name)
+                for model in models_from_model(
+                        value, include_related=include_related,
+                        exclude=exclude):
+                    if (model._meta.app_label == label and
+                            model not in models):
+                        models.add(model)
+                        yield model
+    else:
+        for app in application:
+            for m in model_iterator(app, include_related=include_related,
+                                    exclude=exclude):
+                yield m
