@@ -24,6 +24,8 @@ script:
   - pep8
   - rm -rf odm
   - rm -rf pulsar_odm.egg-info
+  - rm -rf build
+  - rm -rf dist
   - python -m runtests --coverage
   - python -m runtests --coveralls
 
