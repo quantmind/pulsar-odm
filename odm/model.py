@@ -220,7 +220,7 @@ class ModelMeta(object):
             if ((value in NOTHING) and field.required and
                     not isinstance(field, AutoIdField)):
                 raise FieldError("Field '%s' is required for '%s'." %
-                                 (name, self))
+                                 (field.name, self))
             if value is not None:
                 yield field.store_name, value
         rest = set(instance) - set(fields)
