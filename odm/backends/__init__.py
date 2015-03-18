@@ -1,2 +1,2 @@
-from . import _pytables
-from . import _rethinkdb
+from ._pytables import PyTablesStore
+from ._rethinkdb import RethinkDB
