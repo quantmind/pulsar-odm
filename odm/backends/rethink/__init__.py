@@ -4,29 +4,19 @@ from collections import OrderedDict
 
 from pulsar import Pool
 
+from sqlalchemy.dialects import registry
+
 import odm
-from odm.store import REV_KEY
-
-try:
-    from rethinkdb import ast
-    from .protocol import Connection, Consumer, start_query
-    from .query import RethinkDbQuery
-    rethinkdbProtocol = partial(Connection, Consumer)
-except ImportError:     # pragma    nocover
-    rethinkdbProtocol = None
 
 
-Command = odm.Command
-
-
-class RethinkDB(odm.RemoteStore):
-    '''RethinkDB asynchronous data store
+class RethinkDB(odm.NoSqlDialect):
+    '''RethinkDB dialect
     '''
-    protocol_factory = rethinkdbProtocol
 
-    @property
-    def registered(self):
-        return rethinkdbProtocol is not None
+    @classmethod
+    def dbapi(cls):
+        from odm.backends.rethink import async
+        return async
 
     # Database API
     def database_create(self, dbname=None, **kw):
@@ -156,4 +146,4 @@ class RethinkDB(odm.RemoteStore):
         return instance
 
 
-odm.register_store("rethinkdb", "odm.backends._rethinkdb.RethinkDB")
+registry.register("rethinkdb", "odm.backends.rethink", "RethinkDB")

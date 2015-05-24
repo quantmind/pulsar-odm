@@ -6,6 +6,7 @@ import os
 def run(**params):
     from pulsar.apps.test import TestSuite
     from pulsar.apps.test.plugins import bench, profile
+    from tests import PostgreSql
 
     args = params.get('argv', sys.argv)
     if '--coveralls' in args:
@@ -23,11 +24,11 @@ def run(**params):
         sys.exit(0)
     # Run the test suite
     #
-    TestSuite(description='ODM Asynchronous test suite',
+    TestSuite(description='ODM test suite',
               modules=['tests'],
               plugins=(bench.BenchMark(),
-                       profile.Profile()),
-              pidfile='test.pid',
+                       profile.Profile(),
+                       PostgreSql()),
               **params).start()
 
 
