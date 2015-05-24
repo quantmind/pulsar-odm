@@ -1,5 +1,0 @@
--e git+https://github.com/quantmind/pulsar.git#egg=pulsar
-coverage
-pep8
-rethinkdb
-tables

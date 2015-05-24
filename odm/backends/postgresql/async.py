@@ -1,6 +1,32 @@
+from functools import wraps
+from asyncio import Future
+
+from greenlet import getcurrent
 from psycopg2 import *
 
 from pulsar import ImproperlyConfigured
+from pulsar.apps.greenio import wait
+
+psycopg2_connect = connect
+
+
+def wait_deco(callable):
+    '''Wait for a possible asynchronous value to complete.
+    '''
+    @wraps(callable)
+    def _(*args, **kwargs):
+        value = callable(*args, **kwargs)
+        current = greenlet.getcurrent()
+        parent = current.parent
+        return parent.switch(value) if parent else value
+
+    return _
+
+
+# def connect(*args, **kwargs):
+#     # kwargs['async'] = True
+#     conn = psycopg2_connect(*args, **kwargs)
+#     return conn
 
 
 def psycopg2_wait_callback(conn):
@@ -34,7 +60,7 @@ def wait_fd(fd, read=True):
     Check how this function is used in the :func:`.psycopg2_wait_callback`
     function.
     '''
-    current = greenlet.getcurrent()
+    current = getcurrent()
     parent = current.parent
     assert parent, '"wait_fd" must be called by greenlet with a parent'
     try:
