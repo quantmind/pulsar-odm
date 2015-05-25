@@ -8,7 +8,6 @@ from datetime import datetime
 
 import odm
 
-from sqlalchemy import create_engine
 from sqlalchemy import MetaData, Column, Integer, String, Boolean, DateTime
 from sqlalchemy.orm import sessionmaker
 
@@ -66,32 +65,21 @@ class TestCase(unittest.TestCase):
         cls.pool = GreenPool()
         odm.logger.info('Create test databases')
         cls.dbname = randomname(cls.prefixdb)
-        cls.init_engine = yield from cls.pool.submit(cls.setupdb, cls.dbname)
-        url = copy(cls.init_engine.url)
-        url.database = cls.dbname
-        cls.engine = create_engine(str(url))
-        yield from cls.pool.submit(cls.table_create)
-        cls.session = sessionmaker(bind=cls.engine)
-
-    @classmethod
-    def table_create(cls):
-        cls.metadata = MetaData()
-        metadata = cls.metadata
-        for value in cls.models:
-            for table in value.metadata.sorted_tables:
-                if table.key not in metadata.tables:
-                    table.tometadata(metadata)
-        odm.logger.info('Create test tables')
-        metadata.create_all(cls.engine)
+        cls.init_mapper = odm.Mapper(cls.url())
+        cls.mapper = yield from cls.pool.submit(
+            cls.init_mapper.database_create, cls.dbname)
+        for model in cls.models:
+            cls.mapper.register(model)
+        yield from cls.pool.submit(cls.mapper.table_create)
 
     @classmethod
     def tearDownClass(cls):
         # Create the application
-        if cls.engine:
+        if cls.init_engine:
             return cls.pool.submit(cls.dropdb, cls.dbname)
 
     @classmethod
-    def setupdb(cls, dbname):
+    def url(cls):
         raise NotImplementedError
 
     @classmethod
@@ -120,3 +108,10 @@ class TestCase(unittest.TestCase):
         finally:
             if close:
                 session.close()
+
+
+class MapperMixin:
+
+    def test_mapper(self):
+        mapper = self.mapper
+        self.assertTrue(mapper.binds)

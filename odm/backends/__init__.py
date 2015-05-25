@@ -1,2 +1,2 @@
-from .rethink import RethinkDB
-from . import postgresql
+from .postgresql import PGDGreen
+from .redis import RedisDialect
