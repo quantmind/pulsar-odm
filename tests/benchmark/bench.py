@@ -89,9 +89,9 @@ class Bench(pulsar.Application):
                     session.add(world)
 
         if todo:
-            odm.logger('Created %d World models', todo)
+            odm.logger.info('Created %d World models', todo)
         else:
-            odm.logger('%d World models already available', N)
+            odm.logger.info('%d World models already available', N)
 
 
 if __name__ == '__main__':

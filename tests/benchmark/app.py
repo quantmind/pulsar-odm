@@ -1,8 +1,9 @@
-from contextlib import contextmanager
 from random import randint
 
+import pulsar
 from pulsar.apps import wsgi
 from pulsar.apps.wsgi import route, Json, AsyncString
+from pulsar.apps.greenio import WsgiGreen
 
 from sqlalchemy import Column, Integer, String
 
@@ -10,6 +11,13 @@ import odm
 
 
 MAXINT = 10000
+
+
+class PostgreSql(pulsar.Setting):
+    app = 'socket'
+    meta = "CONNECTION_STRING"
+    default = 'postgresql+async://odm:odmtest@127.0.0.1:5432/odmtests'
+    desc = 'Default connection string for the PostgreSql server'
 
 
 class World(odm.Model):
@@ -35,7 +43,7 @@ class Router(wsgi.Router):
     @route()
     def db(self, request):
         '''Single Database Query'''
-        with self.begin() as session:
+        with self.mapper.begin() as session:
             world = session.query(World).get(randint(1, 10000))
         return Json(self.get_json(world)).http_response(request)
 
@@ -44,7 +52,7 @@ class Router(wsgi.Router):
         '''Multiple Database Queries'''
         queries = self.get_queries(request)
         worlds = []
-        with self.begin() as session:
+        with self.mapper.begin() as session:
             for _ in range(queries):
                 world = session.query(World).get(randint(1, MAXINT))
                 worlds.append(self.get_json(world))
@@ -56,33 +64,15 @@ class Router(wsgi.Router):
         queries = self.get_queries(request)
         worlds = []
         for _ in range(queries):
-            with self.begin() as session:
+            with self.mapper.begin() as session:
                 world = session.query(World).get(randint(1, MAXINT))
                 world.randomNumber = randint(1, MAXINT)
                 session.add(world)
             worlds.append(self.get_json(world))
         return Json(worlds).http_response(request)
 
-    @contextmanager
-    def begin(self, close=True, expire_on_commit=False, **options):
-        """Provide a transactional scope around a series of operations.
-
-        By default, ``expire_on_commit`` is set to False so that instances
-        can be used outside the session.
-        """
-        session = self.session(expire_on_commit=expire_on_commit, **options)
-        try:
-            yield session
-            session.commit()
-        except Exception:
-            session.rollback()
-            raise
-        finally:
-            if close:
-                session.close()
-
     def get_queries(self, request):
-        queries = request.urlargs.get("queries", "1")
+        queries = request.url_data.get("queries", "1")
         try:
             queries = int(queries.strip())
         except ValueError:
@@ -97,8 +87,13 @@ class Router(wsgi.Router):
 class Site(wsgi.LazyWsgi):
 
     def setup(self, environ):
-        return wsgi.WsgiHandler([wsgi.wait_for_body_middleware,
-                                 Router('/')],
+        cfg = environ['pulsar.cfg']
+        mapper = odm.Mapper(cfg.postgresql)
+        mapper.register(World)
+        mapper.register(Fortune)
+        #
+        green = WsgiGreen(Router('/', mapper=mapper))
+        return wsgi.WsgiHandler((wsgi.wait_for_body_middleware, green),
                                 async=True)
 
 
