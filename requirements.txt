@@ -1,4 +1,3 @@
 greenlet
 pulsar
 sqlalchemy
--e .

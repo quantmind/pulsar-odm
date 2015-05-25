@@ -6,6 +6,7 @@ python:
 install:
   - pip install -r requirements-dev.txt
   - pip install -r requirements.txt
+  - python setup.py install
 
 before_script:
   - psql -U postgres -c "CREATE ROLE odm WITH PASSWORD 'odmtest';"
@@ -16,6 +17,7 @@ before_script:
 
 script:
   - pep8
+  - sudo rm -rf odm
   - python -m runtests --coverage
   - python -m runtests --coveralls
 
