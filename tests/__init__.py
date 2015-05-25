@@ -2,8 +2,6 @@ import unittest
 import string
 import inspect
 from functools import wraps
-from copy import copy
-from contextlib import contextmanager
 from datetime import datetime
 
 import odm
@@ -56,14 +54,13 @@ class TestCase(unittest.TestCase):
     prefixdb = 'odmtest_'
     models = (Task,)
     # Tuple of SqlAlchemy models to register
-    init_engine = None
+    mapper = None
 
     @classmethod
     def setUpClass(cls):
         # Create the application
         cls.dbs = {}
         cls.pool = GreenPool()
-        odm.logger.info('Create test databases')
         cls.dbname = randomname(cls.prefixdb)
         cls.init_mapper = odm.Mapper(cls.url())
         cls.mapper = yield from cls.pool.submit(
@@ -75,39 +72,16 @@ class TestCase(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         # Create the application
-        if cls.init_engine:
-            return cls.pool.submit(cls.dropdb, cls.dbname)
+        if cls.mapper:
+            yield from cls.pool.submit(cls.mapper.close)
+            yield from cls.pool.submit(cls.init_mapper.database_drop,
+                                       cls.dbname)
 
     @classmethod
     def url(cls):
+        '''Url for database to test
+        '''
         raise NotImplementedError
-
-    @classmethod
-    def dropdb(cls, dbname):
-        cls.engine.dispose()
-        conn = cls.init_engine.connect()
-        conn.execute("commit")
-        conn.execute('drop database %s' % dbname)
-        conn.close()
-
-    @classmethod
-    @contextmanager
-    def begin(cls, close=True, expire_on_commit=False, **options):
-        """Provide a transactional scope around a series of operations.
-
-        By default, ``expire_on_commit`` is set to False so that instances
-        can be used outside the session.
-        """
-        session = cls.session(expire_on_commit=expire_on_commit, **options)
-        try:
-            yield session
-            session.commit()
-        except Exception:
-            session.rollback()
-            raise
-        finally:
-            if close:
-                session.close()
 
 
 class MapperMixin:

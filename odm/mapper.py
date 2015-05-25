@@ -9,10 +9,10 @@ from sqlalchemy.orm.session import Session
 
 from pulsar import ImproperlyConfigured
 
-from .nosql import Engine
+from . import nosql
 
 
-logger = logging.getLogger('lux.odm')
+logger = logging.getLogger('pulsar.odm')
 
 
 class BaseModel(object):
@@ -194,28 +194,32 @@ class Mapper:
             insp = inspect(engine)
             return insp.get_schema_names()
 
-    def _database_create(self, engine, dbname):
-        if isinstance(engine, Engine):
-            return engine.database_create(dbname)
+    def _database_create(self, engine, database):
+        '''Create a new database and return a new url representing
+        a connection to the new database
+        '''
+        logger.info('Creating database "%s" in "%s"', database, engine)
+        if isinstance(engine, nosql.Engine):
+            return engine.database_create(database)
         elif engine.name != 'sqlite':
             conn = engine.connect()
             # the connection will still be inside a transaction,
             # so we have to end the open transaction with a commit
             conn.execute("commit")
-            conn.execute('create database %s' % dbname)
+            conn.execute('create database %s' % database)
             conn.close()
         url = copy(engine.url)
-        url.database = dbname
+        url.database = database
         return str(url)
 
     def _database_drop(self, engine, database):
-        logger.info('dropping database "%s" from %s', database, engine)
+        logger.info('dropping database "%s" from "%s"', database, engine)
         if engine.name == 'sqlite':
             try:
                 os.remove(database)
             except FileNotFoundError:
                 pass
-        elif isinstance(engine, Store):
+        elif isinstance(engine, nosql.Engine):
             engine.database_drop(database)
         else:
             conn = engine.connect()

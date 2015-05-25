@@ -30,29 +30,45 @@ class FillDB(pulsar.Setting):
     desc = "Fill database with random data"
 
 
-WORMUP = 256
+POOL_SIZE = 256
 
 
-class BenchWorker:
+def wormup(worker):
+    worker.http = HttpClient(pool_size=POOL_SIZE)
+    worker.requests = 2*POOL_SIZE
+    worker.logger.info('Worm up')
+    yield from request(worker)
+    yield from worker.send('monitor', 'run', ready)
 
-    def __init__(self, worker, cfg):
-        self.worker = worker
-        self.http = HttpClient()
 
-    def start(self):
-        self.worker.logger.info('Worm up')
-        yield from self.request(WORMUP)
+def bench(worker):
+    worker.requests += 2*POOL_SIZE
+    worker.logger.info('Benchmarking')
+    yield from request(worker)
 
-    def request(self, number):
-        url = self.worker.cfg.test_url
-        loop = self.worker._loop
-        start = loop.time()
-        self.worker.logger.info('Sending %d requests to "%s"', number, url)
-        requests = [self.http.get(url) for _ in range(number)]
-        resp = yield from wait(requests, loop=loop)
-        taken = loop.time() - start
-        self.worker.logger.info('Processed %d requests in %.3f',
-                                number, taken)
+
+def request(worker):
+    url = worker.cfg.test_url
+    loop = worker._loop
+    start = loop.time()
+    number = worker.requests
+    worker.logger.info('Sending %d requests to "%s"', number, url)
+    requests = [worker.http.get(url) for _ in range(number)]
+    resp = yield from wait(requests, loop=loop)
+    taken = loop.time() - start
+    worker.logger.info('Processed %d requests in %.3f', number, taken)
+    return {'taken': taken,
+            'number': number}
+
+
+def ready(monitor):
+    monitor.ready += 1
+    if monitor.ready == monitor.cfg.workers:
+        monitor.logger.info('Start benchmarks')
+        requests = [monitor.send(worker, 'run', bench) for
+                    worker in monitor.managed_actors]
+        results = yield from wait(requests)
+
 
 
 class Bench(pulsar.Application):
@@ -65,13 +81,16 @@ class Bench(pulsar.Application):
                 yield from self.pool.submit(self.filldb)
             finally:
                 monitor._loop.stop()
+        else:
+            monitor.ready = 0
 
     def worker_start(self, worker, exc=None):
         if not exc:
-            bench = BenchWorker(worker, self.cfg)
-            worker._loop.call_later(1, async, bench.start())
+            worker._loop.call_later(1, async, wormup(worker))
 
     def filldb(self):
+        '''Fill database
+        '''
         from app import World, Fortune, odm, MAXINT
 
         mapper = odm.Mapper(self.cfg.postgresql)

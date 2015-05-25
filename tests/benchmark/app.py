@@ -10,6 +10,7 @@ from sqlalchemy import Column, Integer, String
 import odm
 
 
+GREEN_POOL = 10
 MAXINT = 10000
 
 
@@ -92,7 +93,8 @@ class Site(wsgi.LazyWsgi):
         mapper.register(World)
         mapper.register(Fortune)
         #
-        green = WsgiGreen(Router('/', mapper=mapper))
+        riute = Router('/', mapper=mapper)
+        green = WsgiGreen(route, GREEN_POOL)
         return wsgi.WsgiHandler((wsgi.wait_for_body_middleware, green),
                                 async=True)
 
