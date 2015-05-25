@@ -3,7 +3,6 @@ import os
 
 from .model import Model, logger
 from .nosql import NoSqlDialect
-from .engine import create_engine
 from . import backends
 
 

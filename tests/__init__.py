@@ -1,12 +1,15 @@
 import unittest
 import string
 import inspect
+from functools import wraps
+from copy import copy
 from contextlib import contextmanager
 from datetime import datetime
 
 import odm
 
-from sqlalchemy import Column, Integer, String, Boolean, DateTime
+from sqlalchemy import create_engine
+from sqlalchemy import MetaData, Column, Integer, String, Boolean, DateTime
 from sqlalchemy.orm import sessionmaker
 
 from pulsar.apps.test import TestPlugin
@@ -36,9 +39,9 @@ def randomname(prefix):
 def green(method):
     if inspect.isclass(method):
         cls = method
-        for name, method in inspect.getmembers(cls,
-                                               predicate=inspect.ismethod):
+        for name in dir(cls):
             if name.startswith('test'):
+                method = getattr(cls, name)
                 setattr(cls, name, green(method))
 
         return cls
@@ -52,7 +55,9 @@ def green(method):
 
 class TestCase(unittest.TestCase):
     prefixdb = 'odmtest_'
-    engine = None
+    models = (Task,)
+    # Tuple of SqlAlchemy models to register
+    init_engine = None
 
     @classmethod
     def setUpClass(cls):
@@ -61,10 +66,41 @@ class TestCase(unittest.TestCase):
         cls.pool = GreenPool()
         odm.logger.info('Create test databases')
         cls.dbname = randomname(cls.prefixdb)
-        cls.engine = yield from cls.pool.submit(cls.setupdb, cls.dbname)
+        cls.init_engine = yield from cls.pool.submit(cls.setupdb, cls.dbname)
+        url = copy(cls.init_engine.url)
+        url.database = cls.dbname
+        cls.engine = create_engine(str(url))
+        yield from cls.pool.submit(cls.table_create)
         cls.session = sessionmaker(bind=cls.engine)
+
+    @classmethod
+    def table_create(cls):
+        cls.metadata = MetaData()
+        metadata = cls.metadata
+        for value in cls.models:
+            for table in value.metadata.sorted_tables:
+                if table.key not in metadata.tables:
+                    table.tometadata(metadata)
         odm.logger.info('Create test tables')
-        # cls.table_create()
+        metadata.create_all(cls.engine)
+
+    @classmethod
+    def tearDownClass(cls):
+        # Create the application
+        if cls.engine:
+            return cls.pool.submit(cls.dropdb, cls.dbname)
+
+    @classmethod
+    def setupdb(cls, dbname):
+        raise NotImplementedError
+
+    @classmethod
+    def dropdb(cls, dbname):
+        cls.engine.dispose()
+        conn = cls.init_engine.connect()
+        conn.execute("commit")
+        conn.execute('drop database %s' % dbname)
+        conn.close()
 
     @classmethod
     @contextmanager
