@@ -15,7 +15,7 @@ class PostgreSql(pulsar.Setting):
 
 class TestUrl(pulsar.Setting):
     app = 'bench'
-    name= "test_url"
+    name = "test_url"
     default = "http://127.0.0.1:8060/json"
     flags = ["--test-url"]
     desc = "url to test"
@@ -68,7 +68,6 @@ def ready(monitor):
         requests = [monitor.send(worker, 'run', bench) for
                     worker in monitor.managed_actors]
         results = yield from wait(requests)
-
 
 
 class Bench(pulsar.Application):

@@ -1,7 +1,8 @@
-__test__ = False
 import tests
 
 import odm
+
+__test__ = False
 
 
 @tests.green

@@ -42,7 +42,6 @@ class Engine(Connectable):
                         **kwargs).traverse_single(element)
 
 
-
 class NoSqlDialect(Dialect):
     name = 'nosql'
     identifier_preparer = None

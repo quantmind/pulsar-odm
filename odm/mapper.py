@@ -49,7 +49,6 @@ class Mapper:
         if binds and 'default' not in binds:
             raise ImproperlyConfigured('default datastore not specified')
 
-
         self.green_pool = pool or GreenPool()
         self.metadata = MetaData()
         self._engines = {}
