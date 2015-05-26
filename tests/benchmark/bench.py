@@ -30,7 +30,7 @@ class FillDB(pulsar.Setting):
     desc = "Fill database with random data"
 
 
-#POOL_SIZES = [8, 16, 32, 64, 128, 256, 512, 1024]
+# POOL_SIZES = [8, 16, 32, 64, 128, 256, 512, 1024]
 POOL_SIZES = [8, 16, 32, 64]
 TIMEOUT = 15
 REQUESTS = 1000

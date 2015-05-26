@@ -14,12 +14,14 @@ GREEN_POOL = 10
 MAXINT = 10000
 
 
-class PostgreSql(pulsar.Setting):
+class Engine(pulsar.Setting):
     app = 'socket'
+    name = 'engine'
+    flags = ['--engine']
     meta = "CONNECTION_STRING"
     default = ('postgresql+async://odm:odmtest@127.0.0.1:5432/odmtests'
                '?pool_timeout=15')
-    desc = 'Default connection string for the PostgreSql server'
+    desc = 'Default connection string for the Backend database server'
 
 
 class World(odm.Model):
@@ -35,6 +37,8 @@ class Fortune(odm.Model):
 class Router(wsgi.Router):
 
     def get(self, request):
+        '''Simply list test urls
+        '''
         data = {}
         for route in self.routes:
             data[route.name] = request.absolute_uri(route.path())
@@ -96,13 +100,22 @@ class Site(wsgi.LazyWsgi):
 
     def setup(self, environ):
         cfg = environ['pulsar.cfg']
-        mapper = odm.Mapper(cfg.postgresql)
+        mapper = odm.Mapper(cfg.engine)
+        #
+        # Register the two models
         mapper.register(World)
         mapper.register(Fortune)
         #
         route = Router('/', mapper=mapper)
-        green = WsgiGreen(route, mapper.green_pool)
-        return wsgi.WsgiHandler((wsgi.wait_for_body_middleware, green),
+        #
+        # Concurrency method
+        if mapper.green_pool:
+            # Use pool of greenlets
+            pool = WsgiGreen(route, mapper.green_pool)
+        else:
+            # Use pool of threads
+            pool = wsgi.middleware_in_executor(route)
+        return wsgi.WsgiHandler((wsgi.wait_for_body_middleware, pool),
                                 async=True)
 
 

@@ -38,7 +38,7 @@ class Mapper:
 
     .. attribute:: pool
 
-        Greenlet pool
+        Optional greenlet pool, only used when database engines require it.
     '''
     def __init__(self, binds, pool=None):
         # Setup mdoels and engines
@@ -49,16 +49,32 @@ class Mapper:
         if binds and 'default' not in binds:
             raise ImproperlyConfigured('default datastore not specified')
 
-        self.green_pool = pool or GreenPool()
         self.metadata = MetaData()
         self._engines = {}
         self._declarative_register = {}
         self.binds = {}
+        self.green_pool = None
+        is_green = False
+
         for name, bind in tuple(binds.items()):
             key = None if name == 'default' else name
             engine = create_engine(bind)
-            engine.dialect.green_pool = self.green_pool
+            dialect = engine.dialect
+            # Dialect requires Green Pool
+            if hasattr(dialect, 'green_pool'):
+                is_green = True
             self._engines[key] = engine
+
+        if is_green:
+            self.green_pool = pool or GreenPool()
+            for engine in self.engines():
+                dialect = engine.dialect
+                # Dialect requires Green Pool
+                if not hasattr(dialect, 'green_pool'):
+                    raise ImproperlyConfigured('Cannot combine engines with '
+                                               'different concurrency '
+                                               'paradigms')
+                dialect.green_pool = self.green_pool
 
     def __getitem__(self, model):
         return self._declarative_register[model]
