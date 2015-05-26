@@ -3,7 +3,7 @@ from random import randint
 import pulsar
 from pulsar.apps import wsgi
 from pulsar.apps.wsgi import route, Json, AsyncString
-from pulsar.apps.greenio import WsgiGreen
+from pulsar.apps.greenio import wait
 
 from sqlalchemy import Column, Integer, String
 
@@ -17,7 +17,8 @@ MAXINT = 10000
 class PostgreSql(pulsar.Setting):
     app = 'socket'
     meta = "CONNECTION_STRING"
-    default = 'postgresql+async://odm:odmtest@127.0.0.1:5432/odmtests'
+    default = ('postgresql+async://odm:odmtest@127.0.0.1:5432/odmtests'
+               '?pool_timeout=15')
     desc = 'Default connection string for the PostgreSql server'
 
 
@@ -32,6 +33,12 @@ class Fortune(odm.Model):
 
 
 class Router(wsgi.Router):
+
+    def get(self, request):
+        data = {}
+        for route in self.routes:
+            data[route.name] = request.absolute_uri(route.path())
+        return Json(data).http_response(request)
 
     @route()
     def json(self, request):
@@ -93,10 +100,24 @@ class Site(wsgi.LazyWsgi):
         mapper.register(World)
         mapper.register(Fortune)
         #
-        riute = Router('/', mapper=mapper)
-        green = WsgiGreen(route, GREEN_POOL)
+        route = Router('/', mapper=mapper)
+        green = WsgiGreen(route, mapper.green_pool)
         return wsgi.WsgiHandler((wsgi.wait_for_body_middleware, green),
                                 async=True)
+
+
+class WsgiGreen:
+    '''Wraps a Wsgi application to be executed on a pool of greenlet
+    '''
+    def __init__(self, wsgi, pool):
+        self.wsgi = wsgi
+        self.pool = pool
+
+    def __call__(self, environ, start_response):
+        return self.pool.submit(self._green_handler, environ, start_response)
+
+    def _green_handler(self, environ, start_response):
+        return wait(self.wsgi(environ, start_response))
 
 
 def server(description=None, **kwargs):
