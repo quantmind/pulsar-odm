@@ -1,17 +1,11 @@
 from functools import wraps
 
 import sqlalchemy
-from sqlalchemy.engine import Dialect, Connectable, url
-from sqlalchemy.engine.strategies import PlainEngineStrategy
+from sqlalchemy.engine import Dialect, Connectable
 from sqlalchemy import pool
 
 from pulsar import get_actor
 from pulsar.apps.greenio import wait
-
-
-def create_engine(*args, **kwargs):
-    kwargs.setdefault('strategy', 'odm')
-    return sqlalchemy.create_engine(*args, **kwargs)
 
 
 def green(callable):
@@ -26,23 +20,6 @@ def green(callable):
 
 def get_loop():
     return get_actor()._loop
-
-
-class OdmEngineStrategy(PlainEngineStrategy):
-    name = 'odm'
-
-    def create(self, name_or_url, **kwargs):
-        # create url.URL object
-        u = url.make_url(name_or_url)
-        dialect_cls = u.get_dialect()
-
-        if hasattr(dialect_cls, 'engine_cls'):
-            dialect = dialect_cls(**kwargs)
-            return dialect_cls.engine_cls(dialect, u)
-        else:
-            return super().create(name_or_url, **kwargs)
-
-OdmEngineStrategy()
 
 
 class Engine(Connectable):

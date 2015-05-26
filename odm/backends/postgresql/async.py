@@ -6,44 +6,58 @@ from psycopg2 import *
 from pulsar import ImproperlyConfigured
 
 
+def green_connect(green_pool, *args, **kwargs):
+    current = getcurrent()
+    if not current.parent:
+        # we are already in the main greenlet.
+        assert green_pool, "Green pool not available, cannot connect"
+        return green_pool.submit(connect, *args, **kwargs)
+    else:
+        # On a child greenlet simply connect
+        return connect(*args, **kwargs)
+
+
 def psycopg2_wait_callback(conn):
     """A wait callback to allow greenlet to work with Psycopg.
     The caller must be from a greenlet other than the main one.
+
+    :param conn: psycopg2 connection or file number
+
+    This function must be invoked from a coroutine with parent, therefore
+    invoking it from the main greenlet will raise an exception.
     """
-    while 1:
+    while True:
         state = conn.poll()
         if state == extensions.POLL_OK:
             # Done with waiting
             break
         elif state == extensions.POLL_READ:
-            wait_fd(conn)
+            _wait_fd(conn)
         elif state == extensions.POLL_WRITE:
-            wait_fd(conn, read=False)
+            _wait_fd(conn, read=False)
         else:  # pragma    nocover
             raise OperationalError("Bad result from poll: %r" % state)
 
 
 # INTERNALS
 
-def wait_fd(fd, read=True):
+def _wait_fd(conn, read=True):
     '''Wait for an event on file descriptor ``fd``.
 
-    :param fd: file descriptor
-    :param read=True: wait for a read event if ``True``, otherwise a wait
+    :param conn: file descriptor
+    :param read: wait for a read event if ``True``, otherwise a wait
         for write event.
 
     This function must be invoked from a coroutine with parent, therefore
     invoking it from the main greenlet will raise an exception.
-    Check how this function is used in the :func:`.psycopg2_wait_callback`
-    function.
     '''
     current = getcurrent()
     parent = current.parent
-    assert parent, '"wait_fd" must be called by greenlet with a parent'
+    assert parent, '"_wait_fd" must be called by greenlet with a parent'
     try:
-        fileno = fd.fileno()
+        fileno = conn.fileno()
     except AttributeError:
-        fileno = fd
+        fileno = conn
     future = Future()
     # When the event on fd occurs switch back to the current greenlet
     if read:
@@ -53,7 +67,7 @@ def wait_fd(fd, read=True):
     # switch back to parent greenlet
     parent.switch(future)
     # Back on the child greenlet. Raise error if there is one
-    return future.result()
+    future.result()
 
 
 def _done_wait_fd(fd, future, read):

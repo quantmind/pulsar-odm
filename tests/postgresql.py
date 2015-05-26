@@ -8,7 +8,12 @@ class PostgreSqlTests(tests.TestCase, tests.MapperMixin):
 
     @classmethod
     def url(cls):
-        return cls.cfg.postgresql
+        return cls.cfg.postgresql + '?pool_size=7'
+
+    def test_pool(self):
+        engine = self.mapper.get_engine()
+        self.assertIsInstance(engine.pool, odm.AsyncPool)
+        self.assertEqual(engine.pool.size(), 7)
 
     def test_create_task(self):
         with self.mapper.begin() as session:

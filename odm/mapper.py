@@ -2,14 +2,16 @@ import logging
 from copy import copy
 from contextlib import contextmanager
 
-from sqlalchemy import MetaData, create_engine, event
+from sqlalchemy import MetaData, event
 from sqlalchemy.ext.declarative import DeclarativeMeta
 from sqlalchemy.ext.declarative import declarative_base, declared_attr
 from sqlalchemy.orm.session import Session
 
 from pulsar import ImproperlyConfigured
+from pulsar.apps.greenio import GreenPool
 
-from . import nosql
+from .strategy import create_engine
+from .nosql import Engine
 
 
 logger = logging.getLogger('pulsar.odm')
@@ -27,8 +29,18 @@ Model = declarative_base(cls=BaseModel)
 
 class Mapper:
     '''SQLAlchemy wrapper
+
+    .. attribute:: binds
+
+        Dictionary of labels-engine pairs. The "default" label is always
+        present and it is used for tables without `bind_label` in their
+        `info` dictionary.
+
+    .. attribute:: pool
+
+        Greenlet pool
     '''
-    def __init__(self, binds):
+    def __init__(self, binds, pool=None):
         # Setup mdoels and engines
         if not binds:
             binds = {}
@@ -37,13 +49,17 @@ class Mapper:
         if binds and 'default' not in binds:
             raise ImproperlyConfigured('default datastore not specified')
 
+
+        self.green_pool = pool or GreenPool()
         self.metadata = MetaData()
         self._engines = {}
         self._declarative_register = {}
         self.binds = {}
         for name, bind in tuple(binds.items()):
             key = None if name == 'default' else name
-            self._engines[key] = create_engine(bind)
+            engine = create_engine(bind)
+            engine.dialect.green_pool = self.green_pool
+            self._engines[key] = engine
 
     def __getitem__(self, model):
         return self._declarative_register[model]
@@ -54,7 +70,7 @@ class Mapper:
         raise AttributeError('No model named "%s"' % name)
 
     def copy(self, binds):
-        return self.__class__(binds)
+        return self.__class__(binds, self.green_pool)
 
     def register(self, model):
         metadata = self.metadata
@@ -199,7 +215,7 @@ class Mapper:
         a connection to the new database
         '''
         logger.info('Creating database "%s" in "%s"', database, engine)
-        if isinstance(engine, nosql.Engine):
+        if isinstance(engine, Engine):
             return engine.database_create(database)
         elif engine.name != 'sqlite':
             conn = engine.connect()
@@ -219,7 +235,7 @@ class Mapper:
                 os.remove(database)
             except FileNotFoundError:
                 pass
-        elif isinstance(engine, nosql.Engine):
+        elif isinstance(engine, Engine):
             engine.database_drop(database)
         else:
             conn = engine.connect()

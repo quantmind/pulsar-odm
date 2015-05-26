@@ -2,7 +2,8 @@
 import os
 
 from .mapper import Model, Mapper, logger
-from .nosql import create_engine
+from .strategy import create_engine
+from .pool import AsyncPool
 from . import backends
 
 
