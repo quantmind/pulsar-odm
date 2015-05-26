@@ -14,7 +14,7 @@ class Pool(pulsar.Pool):
         return wait(self._get())
 
     def is_connection_closed(self, connection):
-        if hasattr(connection, 'sock'):
+        if hasattr(connection, 'sock'):     # pragma    nocover
             if is_socket_closed(connection.sock):
                 connection.close()
                 return True
@@ -45,9 +45,12 @@ class AsyncPool(pool.Pool):
     def size(self):
         return self._pool.pool_size
 
+    def timeout(self):
+        return self._pool._timeout
+
     def recreate(self):
         self.logger.info("Pool recreating")
-        return self.__class__(self._creator, pool_size=self.size(),
+        return self.__class__(self._pool._creator, pool_size=self.size(),
                               timeout=self._pool._timeout, loop=self._loop,
                               recycle=self._recycle, echo=self.echo,
                               logging_name=self._orig_logging_name,

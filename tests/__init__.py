@@ -9,16 +9,8 @@ import odm
 from sqlalchemy import MetaData, Column, Integer, String, Boolean, DateTime
 from sqlalchemy.orm import sessionmaker
 
-from pulsar.apps.test import TestPlugin
 from pulsar.utils.string import random_string
 from pulsar.apps.greenio import GreenPool
-
-
-class PostgreSql(TestPlugin):
-    name = 'postgresql'
-    meta = "CONNECTION_STRING"
-    default = 'postgresql+async://odm:odmtest@127.0.0.1:5432/odmtests'
-    desc = 'Default connection string for the PostgreSql server'
 
 
 class Task(odm.Model):

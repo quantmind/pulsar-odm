@@ -19,8 +19,8 @@ class OdmEngineStrategy(PlainEngineStrategy):
 
         if 'pool_size' in u.query:
             kwargs['pool_size'] = int(u.query.pop('pool_size'))
-        if 'timeout' in u.query:
-            kwargs['timeout'] = float(u.query.pop('timeout'))
+        if 'pool_timeout' in u.query:
+            kwargs['pool_timeout'] = float(u.query.pop('pool_timeout'))
 
         return super().create(name_or_url, **kwargs)
 

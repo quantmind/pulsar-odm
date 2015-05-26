@@ -19,7 +19,7 @@ class PGDGreen(PGDialect_psycopg2):
     def create_connect_args(self, url):
         args, opts = super().create_connect_args(url)
         opts.pop('pool_size', None)
-        opts.pop('timeout', None)
+        opts.pop('pool_timeout', None)
         return [[], opts]
 
     def connect(self, *cargs, **cparams):
