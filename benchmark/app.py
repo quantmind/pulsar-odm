@@ -3,7 +3,7 @@ from random import randint
 import pulsar
 from pulsar.apps import wsgi
 from pulsar.apps.wsgi import route, Json, AsyncString
-from pulsar.apps.greenio import wait
+from pulsar.apps.greenio import wait, WsgiGreen
 
 from sqlalchemy import Column, Integer, String
 
@@ -117,20 +117,6 @@ class Site(wsgi.LazyWsgi):
             pool = wsgi.middleware_in_executor(route)
         return wsgi.WsgiHandler((wsgi.wait_for_body_middleware, pool),
                                 async=True)
-
-
-class WsgiGreen:
-    '''Wraps a Wsgi application to be executed on a pool of greenlet
-    '''
-    def __init__(self, wsgi, pool):
-        self.wsgi = wsgi
-        self.pool = pool
-
-    def __call__(self, environ, start_response):
-        return self.pool.submit(self._green_handler, environ, start_response)
-
-    def _green_handler(self, environ, start_response):
-        return wait(self.wsgi(environ, start_response))
 
 
 def server(description=None, **kwargs):

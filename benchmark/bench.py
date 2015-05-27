@@ -10,10 +10,11 @@ from pulsar.apps.greenio import GreenPool
 from pulsar.utils.slugify import slugify
 
 
-# POOL_SIZES = [8, 16, 32, 64, 128, 256, 512, 1024]
-POOL_SIZES = [8, 16, 32, 64, 128, 256]
-TIMEOUT = 60
-REQUESTS = 1000
+POOL_SIZES = [8, 16, 32, 64, 128, 256, 512, 1024]
+POOL_SIZES = [8]
+TIMEOUT = 120
+REQUESTS = 200
+FIRST_WORMUP = 100
 FIELDNAMES = ['concurrency', 'requests', 'errors', 'time']
 
 
@@ -41,16 +42,15 @@ class FillDB(pulsar.Setting):
     desc = "Fill database with random data"
 
 
-def wormup(worker, pool_size):
+def wormup(worker, pool_size, total=FIRST_WORMUP):
     worker.http = HttpClient(pool_size=pool_size, timeout=TIMEOUT)
-    worker.requests = REQUESTS
+    worker.requests = total
     worker.logger.info('WORM UP')
     yield from request(worker, False)
     yield from worker.send('monitor', 'run', ready)
 
 
 def bench(worker):
-    worker.requests = 2*REQUESTS
     worker.logger.info('BENCHMARKING')
     results = yield from request(worker)
     return results
@@ -84,7 +84,7 @@ def request(worker, log=True):
 
 
 def add(name):
-    return lambda a, b: a[name] + b[name]
+    return lambda a, b: a + b[name]
 
 
 def ready(monitor):
@@ -97,10 +97,14 @@ def ready(monitor):
 
 
 def run_benchmark(monitor):
+    '''Run the benchmarks
+    '''
     url = urlparse(monitor.cfg.test_url)
     name = slugify(url.path) or 'home'
     name = '%s_%d.csv' % (name, monitor.cfg.workers)
     monitor.logger.info('WRITING RESULTS ON "%s"', name)
+    total = REQUESTS//monitor.cfg.workers
+
     with open(name, 'w') as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=FIELDNAMES)
         writer.writeheader()
@@ -112,7 +116,7 @@ def run_benchmark(monitor):
                 monitor._loop.stop()
 
             # WORMUP
-            requests = [monitor.send(worker, 'run', wormup, size) for
+            requests = [monitor.send(worker, 'run', wormup, size, total) for
                         worker in monitor.managed_actors]
             yield from wait(requests)
 
@@ -125,7 +129,7 @@ def run_benchmark(monitor):
 
             summary = {'concurrency': pool_size}
             for name in results[0]:
-                summary[name] = reduce(add(name), results)
+                summary[name] = reduce(add(name), results, 0)
             writer.writerow(summary)
 
             persec = summary['requests']/summary['time']
