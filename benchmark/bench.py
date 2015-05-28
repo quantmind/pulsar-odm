@@ -13,8 +13,8 @@ from pulsar.utils.slugify import slugify
 POOL_SIZES = [8, 16, 32, 64, 128, 256, 512, 1024]
 POOL_SIZES = [8]
 TIMEOUT = 120
-REQUESTS = 200
-FIRST_WORMUP = 100
+REQUESTS = 10
+FIRST_WORMUP = 10
 FIELDNAMES = ['concurrency', 'requests', 'errors', 'time']
 
 

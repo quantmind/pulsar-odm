@@ -10,7 +10,6 @@ from sqlalchemy import Column, Integer, String
 import odm
 
 
-GREEN_POOL = 10
 MAXINT = 10000
 
 

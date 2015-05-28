@@ -71,11 +71,15 @@ def _wait_fd(conn, read=True):
 
 
 def _done_wait_fd(fd, future, read):
-    if read:
-        future._loop.remove_reader(fd)
+    try:
+        if read:
+            future._loop.remove_reader(fd)
+        else:
+            future._loop.remove_writer(fd)
+    except Exception as exc:
+        future.set_exception(exc)
     else:
-        future._loop.remove_writer(fd)
-    future.set_result(None)
+        future.set_result(None)
 
 
 try:
