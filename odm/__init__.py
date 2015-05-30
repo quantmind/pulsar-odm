@@ -3,7 +3,7 @@ import os
 
 from .mapper import Model, Mapper, logger
 from .strategy import create_engine
-from .pool import AsyncPool
+from .pool import GreenletPool
 from . import backends
 
 

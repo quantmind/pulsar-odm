@@ -37,7 +37,7 @@ def green(method):
     else:
         @wraps(method)
         def _(self):
-            return self.mapper.green_pool.submit(method, self)
+            return self.green_pool.submit(method, self)
 
         return _
 
@@ -54,18 +54,18 @@ class TestCase(unittest.TestCase):
         cls.dbs = {}
         cls.dbname = randomname(cls.prefixdb)
         cls.init_mapper = odm.Mapper(cls.url())
-        pool = cls.init_mapper.green_pool
-        cls.mapper = yield from pool.submit(
+        cls.green_pool = GreenPool()
+        cls.mapper = yield from cls.green_pool.submit(
             cls.init_mapper.database_create, cls.dbname)
         for model in cls.models:
             cls.mapper.register(model)
-        yield from pool.submit(cls.mapper.table_create)
+        yield from cls.green_pool.submit(cls.mapper.table_create)
 
     @classmethod
     def tearDownClass(cls):
         # Create the application
         if cls.mapper:
-            pool = cls.init_mapper.green_pool
+            pool = cls.green_pool
             yield from pool.submit(cls.mapper.close)
             yield from pool.submit(cls.init_mapper.database_drop,
                                    cls.dbname)

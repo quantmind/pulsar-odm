@@ -12,8 +12,8 @@ class PostgreSqlTests(tests.TestCase, tests.MapperMixin):
 
     def test_pool(self):
         engine = self.mapper.get_engine()
-        self.assertIsInstance(engine.pool, odm.AsyncPool)
-        self.assertEqual(engine.pool.size(), 7)
+        self.assertIsInstance(engine.pool, odm.GreenletPool)
+        self.assertEqual(engine.pool.max_size(), 7)
         self.assertEqual(engine.pool.timeout(), 15)
 
     def test_create_task(self):

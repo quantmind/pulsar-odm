@@ -3,7 +3,7 @@ from random import randint
 import pulsar
 from pulsar.apps import wsgi
 from pulsar.apps.wsgi import route, Json, AsyncString
-from pulsar.apps.greenio import wait, WsgiGreen
+from pulsar.apps.greenio import GreenWSGI, GreenPool
 
 from sqlalchemy import Column, Integer, String
 
@@ -18,8 +18,7 @@ class Engine(pulsar.Setting):
     name = 'engine'
     flags = ['--engine']
     meta = "CONNECTION_STRING"
-    default = ('postgresql+async://odm:odmtest@127.0.0.1:5432/odmtests'
-               '?pool_timeout=15')
+    default = 'postgresql+green://odm:odmtest@127.0.0.1:5432/odmtests'
     desc = 'Default connection string for the Backend database server'
 
 
@@ -95,7 +94,7 @@ class Router(wsgi.Router):
         return {'id': world.id, 'randomNumber': world.randomNumber}
 
 
-class Site(wsgi.LazyWsgi):
+class App(wsgi.LazyWsgi):
 
     def setup(self, environ):
         cfg = environ['pulsar.cfg']
@@ -108,9 +107,9 @@ class Site(wsgi.LazyWsgi):
         route = Router('/', mapper=mapper)
         #
         # Concurrency method
-        if mapper.green_pool:
+        if mapper.is_green:
             # Use pool of greenlets
-            pool = WsgiGreen(route, mapper.green_pool)
+            pool = GreenWSGI(route, GreenPool(cfg.thread_workers))
         else:
             # Use pool of threads
             pool = wsgi.middleware_in_executor(route)
@@ -120,7 +119,7 @@ class Site(wsgi.LazyWsgi):
 
 def server(description=None, **kwargs):
     description = description or 'Pulsar Benchmark'
-    return wsgi.WSGIServer(Site(), description=description, **kwargs)
+    return wsgi.WSGIServer(App(), description=description, **kwargs)
 
 
 if __name__ == '__main__':

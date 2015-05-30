@@ -1,66 +1,66 @@
-from asyncio import Future
-from collections import deque
-
 from sqlalchemy import pool
 
-import pulsar
-from pulsar.apps.greenio import wait
+from pulsar.apps.greenio import GreenLock
 
 
-class Pool(pulsar.Pool):
+class GreenletPool(pool.Pool):
+    '''A Pool that maintains one connection per greenlet.
 
-    def connect(self):
-        assert not self._closed
-        return wait(self._get())
-
-    def is_connection_closed(self, connection):
-        if hasattr(connection, 'sock'):     # pragma    nocover
-            if is_socket_closed(connection.sock):
-                connection.close()
-                return True
-        return False
-
-
-class AsyncPool(pool.Pool):
-    '''Asynchronous Pool of connections.
-
-    This pool should always be accessed in thread
+    Maintains one connection per each greenlet, never moving a
+    connection to a greenlet other than the one which it was
+    created in.
     '''
-    def __init__(self, creator, pool_size=10, timeout=30, loop=None, **kw):
-        self._pool = Pool(creator, pool_size=pool_size, timeout=timeout,
-                          loop=loop)
-        super().__init__(self._pool.connect, **kw)
-
-    @property
-    def _loop(self):
-        return self._pool._loop
+    def __init__(self, creator, pool_size=10, timeout=30, **kw):
+        super().__init__(creator, **kw)
+        self._lock = GreenLock()
+        self._max_size = pool_size
+        self._timeout = timeout
+        self._connections = set()
+        self._available_connections = set()
 
     def dispose(self):
-        self._pool.close()
+        for conn in self._connections:
+            try:
+                conn.close()
+            except Exception:
+                # pysqlite won't even let you close a conn from a thread
+                # that didn't create it
+                pass
         self.logger.info("Pool disposed. %s", self.status())
 
     def status(self):
-        return self._pool.status()
+        return "%s size: %d" % (self._attribute, len(self._all_conns))
 
     def size(self):
-        return self._pool.pool_size
+        return len(self._connections)
+
+    def max_size(self):
+        return self._max_size
 
     def timeout(self):
-        return self._pool._timeout
+        return self._timeout
 
     def recreate(self):
         self.logger.info("Pool recreating")
-        return self.__class__(self._pool._creator, pool_size=self.size(),
-                              timeout=self._pool._timeout, loop=self._loop,
-                              recycle=self._recycle, echo=self.echo,
+        return self.__class__(self._creator, recycle=self._recycle,
+                              echo=self.echo,
                               logging_name=self._orig_logging_name,
                               use_threadlocal=self._use_threadlocal,
                               reset_on_return=self._reset_on_return,
                               _dispatch=self.dispatch,
                               _dialect=self._dialect)
 
-    def _do_return_conn(self, rec):
-        return wait(self._pool._put(rec.connection))
+    def _do_return_conn(self, conn):
+        self._available_connections.add(conn)
 
     def _do_get(self):
-        return self._create_connection()
+        try:
+            return self._available_connections.pop()
+        except KeyError:
+            pass
+
+        # Only create one connection at a time, otherwise psycopg2 block!
+        with self._lock:
+            conn = self._create_connection()
+            self._connections.add(conn)
+            return conn

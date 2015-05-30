@@ -6,17 +6,6 @@ from psycopg2 import *
 from pulsar import ImproperlyConfigured
 
 
-def green_connect(green_pool, *args, **kwargs):
-    current = getcurrent()
-    if not current.parent:
-        # we are already in the main greenlet.
-        assert green_pool, "Green pool not available, cannot connect"
-        return green_pool.submit(connect, *args, **kwargs)
-    else:
-        # On a child greenlet simply connect
-        return connect(*args, **kwargs)
-
-
 def psycopg2_wait_callback(conn):
     """A wait callback to allow greenlet to work with Psycopg.
     The caller must be from a greenlet other than the main one.

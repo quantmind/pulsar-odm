@@ -8,7 +8,6 @@ from sqlalchemy.ext.declarative import declarative_base, declared_attr
 from sqlalchemy.orm.session import Session
 
 from pulsar import ImproperlyConfigured
-from pulsar.apps.greenio import GreenPool
 
 from .strategy import create_engine
 from .nosql import Engine
@@ -35,12 +34,8 @@ class Mapper:
         Dictionary of labels-engine pairs. The "default" label is always
         present and it is used for tables without `bind_label` in their
         `info` dictionary.
-
-    .. attribute:: pool
-
-        Optional greenlet pool, only used when database engines require it.
     '''
-    def __init__(self, binds, pool=None):
+    def __init__(self, binds):
         # Setup mdoels and engines
         if not binds:
             binds = {}
@@ -53,28 +48,25 @@ class Mapper:
         self._engines = {}
         self._declarative_register = {}
         self.binds = {}
-        self.green_pool = None
-        is_green = False
+        self.is_green = False
 
         for name, bind in tuple(binds.items()):
             key = None if name == 'default' else name
             engine = create_engine(bind)
             dialect = engine.dialect
             # Dialect requires Green Pool
-            if hasattr(dialect, 'green_pool'):
-                is_green = True
+            if getattr(dialect, 'is_green', False):
+                self.is_green = True
             self._engines[key] = engine
 
-        if is_green:
-            self.green_pool = pool or GreenPool()
+        if self.is_green:
             for engine in self.engines():
                 dialect = engine.dialect
                 # Dialect requires Green Pool
-                if not hasattr(dialect, 'green_pool'):
+                if not getattr(dialect, 'is_green', False):
                     raise ImproperlyConfigured('Cannot combine engines with '
                                                'different concurrency '
                                                'paradigms')
-                dialect.green_pool = self.green_pool
 
     def __getitem__(self, model):
         return self._declarative_register[model]
@@ -85,7 +77,7 @@ class Mapper:
         raise AttributeError('No model named "%s"' % name)
 
     def copy(self, binds):
-        return self.__class__(binds, self.green_pool)
+        return self.__class__(binds)
 
     def register(self, model):
         metadata = self.metadata
