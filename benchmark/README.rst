@@ -9,9 +9,8 @@ using multiple process simple add pwer linearly up to a limit given
 by the number of cores in the machine.
 
 To run the server as single process execute:
-```
-python3 app.py -w 0 --log-level warning
-```
+
+    python3 app.py -w 0 --log-level warning
 
 
 Benchmark
