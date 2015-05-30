@@ -2,7 +2,7 @@ from random import randint
 
 import pulsar
 from pulsar.apps import wsgi
-from pulsar.apps.wsgi import route, Json, AsyncString
+from pulsar.apps.wsgi import route, Json, String
 from pulsar.apps.greenio import GreenWSGI, GreenPool
 
 from sqlalchemy import Column, Integer, String
@@ -33,7 +33,8 @@ class Fortune(odm.Model):
 
 
 class Router(wsgi.Router):
-
+    '''WSGI Router for the benchmarking application
+    '''
     def get(self, request):
         '''Simply list test urls
         '''
@@ -48,7 +49,7 @@ class Router(wsgi.Router):
 
     @route()
     def plaintext(self, request):
-        return AsyncString('Hello, World!').http_response(request)
+        return String('Hello, World!').http_response(request)
 
     @route()
     def db(self, request):
@@ -100,7 +101,7 @@ class App(wsgi.LazyWsgi):
         cfg = environ['pulsar.cfg']
         mapper = odm.Mapper(cfg.engine)
         #
-        # Register the two models
+        # Register the two alchemy models
         mapper.register(World)
         mapper.register(Fortune)
         #
@@ -118,7 +119,7 @@ class App(wsgi.LazyWsgi):
 
 
 def server(description=None, **kwargs):
-    description = description or 'Pulsar Benchmark'
+    description = description or 'Pulsar ODM Benchmark'
     return wsgi.WSGIServer(App(), description=description, **kwargs)
 
 
