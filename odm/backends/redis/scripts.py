@@ -1,85 +1,233 @@
+import os
+from hashlib import sha1
+from collections import namedtuple
+from datetime import datetime
+from copy import copy
+
+from .util import RedisScript, read_lua_file
+
+MIN_FLOAT = -1.e99
+
+############################################################################
+#    prefixes for data
+OBJ = 'obj'     # the hash table for a instance
+TMP = 'tmp'     # temporary key
+ODM_SCRIPTS = ('odmrun', 'move2set', 'zdiffstore')
+############################################################################
 
 
-class RedisScriptMeta(type):
-
-    def __new__(cls, name, bases, attrs):
-        super_new = super(RedisScriptMeta, cls).__new__
-        abstract = attrs.pop('abstract', False)
-        new_class = super_new(cls, name, bases, attrs)
-        if not abstract:
-            o = new_class(new_class.script, new_class.__name__)
-            new_class._scripts[o.name] = o
-        return new_class
+redis_connection = namedtuple('redis_connection', 'address db')
 
 
-class RedisScript(metaclass=RedisScriptMeta):
-    '''Class which helps the sending and receiving lua scripts.
+def decode(value, encoding):
+    if isinstance(value, bytes):
+        return value.decode(encoding)
+    else:
+        return value
 
-    It uses the ``evalsha`` command.
 
-    .. attribute:: script
+def pairs_to_dict(response, encoding):
+    "Create a dict given a list of key/value pairs"
+    it = iter(response)
+    return dict(((k.decode(encoding), v) for k, v in zip(it, it)))
 
-        The lua script to run
 
-    .. attribute:: required_scripts
-
-        A list/tuple of other :class:`RedisScript` names required by this
-        script to properly execute.
-
-    .. attribute:: sha1
-
-        The SHA-1_ hexadecimal representation of :attr:`script` required by the
-        ``EVALSHA`` redis command. This attribute is evaluated by the library,
-        it is not set by the user.
-
-    .. _SHA-1: http://en.wikipedia.org/wiki/SHA-1
-    '''
-    abstract = True
-    script = None
-    _scripts = {}
-    required_scripts = ()
-
-    def __init__(self, script, name):
-        if isinstance(script, (list, tuple)):
-            script = '\n'.join(script)
-        self._name = name
-        self.script = script
-        rs = set((name,))
-        rs.update(self.required_scripts)
-        self.required_scripts = rs
-
-    @property
-    def name(self):
-        return self._name
-
-    @property
-    def sha1(self):
-        if not hasattr(self, '_sha1'):
-            self._sha1 = sha1(self.script.encode('utf-8')).hexdigest()
-        return self._sha1
-
-    def __repr__(self):
-        return self.name if self.name else self.__class__.__name__
-    __str__ = __repr__
-
-    def preprocess_args(self, client, args):
-        return args
-
-    def callback(self, response, **options):
-        '''Called back after script execution.
-
-        This is the only method user should override when writing a new
-        :class:`RedisScript`. By default it returns ``response``.
-
-        :parameter response: the response obtained from the script execution.
-        :parameter options: Additional options for the callback.
-        '''
+def script_callback(response, script=None, **options):
+    if script:
+        return script.callback(response, **options)
+    else:
         return response
 
-    def __call__(self, client, keys, args, options):
-        args = self.preprocess_args(client, args)
-        numkeys = len(keys)
-        keys_args = tuple(keys) + args
-        options.update({'script': self, 'redis_client': client})
-        return client.execute_command('EVALSHA', self.sha1, numkeys,
-                                      *keys_args, **options)
+
+def parse_info(response):
+    '''Parse the response of Redis's INFO command into a Python dict.
+    In doing so, convert byte data into unicode.'''
+    info = {}
+    response = response.decode('utf-8')
+
+    def get_value(value):
+        if ',' and '=' not in value:
+            return value
+        sub_dict = {}
+        for item in value.split(','):
+            k, v = item.split('=')
+            try:
+                sub_dict[k] = int(v)
+            except ValueError:
+                sub_dict[k] = v
+        return sub_dict
+    data = info
+    for line in response.splitlines():
+        keyvalue = line.split(':')
+        if len(keyvalue) == 2:
+            key, value = keyvalue
+            try:
+                data[key] = int(value)
+            except ValueError:
+                data[key] = get_value(value)
+        else:
+            data = {}
+            info[line[2:]] = data
+    return info
+
+
+def dict_update(original, data):
+    target = original.copy()
+    target.update(data)
+    return target
+
+
+############################################################################
+##    BATTERY INCLUDED REDIS SCRIPTS
+############################################################################
+class countpattern(RedisScript):
+    script = '''\
+return # redis.call('keys', ARGV[1])
+'''
+
+    def preprocess_args(self, client, args):
+        if args and client.prefix:
+            args = tuple(('%s%s' % (client.prefix, a) for a in args))
+        return args
+
+
+class delpattern(countpattern):
+    script = '''\
+local n = 0
+for i,key in ipairs(redis.call('keys', ARGV[1])) do
+  n = n + redis.call('del', key)
+end
+return n
+'''
+
+
+class zpop(RedisScript):
+    script = read_lua_file('commands.zpop')
+
+    def callback(self, response, withscores=False, **options):
+        if not response or not withscores:
+            return response
+        return zip(response[::2], map(float, response[1::2]))
+
+
+class zdiffstore(RedisScript):
+    script = read_lua_file('commands.zdiffstore')
+
+
+class move2set(RedisScript):
+    script = (read_lua_file('commands.utils'),
+              read_lua_file('commands.move2set'))
+
+
+class keyinfo(RedisScript):
+    script = read_lua_file('commands.keyinfo')
+
+    def preprocess_args(self, client, args):
+        if args and client.prefix:
+            a = ['%s%s' % (client.prefix, args[0])]
+            a.extend(args[1:])
+            args = tuple(a)
+        return args
+
+    def callback(self, response, redis_client=None, **options):
+        client = redis_client
+        if client.is_pipeline:
+            client = client.client
+        encoding = 'utf-8'
+        all_keys = []
+        for key, typ, length, ttl, enc, idle in response:
+            key = key.decode(encoding)[len(client.prefix):]
+            key = RedisKey(key=key, client=client,
+                           type=typ.decode(encoding),
+                           length=length,
+                           ttl=ttl if ttl != -1 else False,
+                           encoding=enc.decode(encoding),
+                           idle=idle)
+            all_keys.append(key)
+        return all_keys
+
+
+class OdmRun(RedisScript):
+    script = (read_lua_file('tabletools'),
+              # timeseries must be included before utils
+              read_lua_file('commands.timeseries'),
+              read_lua_file('commands.utils'),
+              read_lua_file('odm'))
+    required_scripts = ODM_SCRIPTS
+
+    def callback(self, response, meta=None, backend=None, odm_command=None,
+                 **opts):
+        if odm_command == 'delete':
+            res = (instance_session_result(r, False, r, True, 0)
+                   for r in response)
+            return session_result(meta, res)
+        elif odm_command == 'commit':
+            res = self._wrap_commit(response, **opts)
+            return session_result(meta, res)
+        elif odm_command == 'load':
+            return self.load_query(response, backend, meta, **opts)
+        elif odm_command == 'structure':
+            return self.flush_structure(response, backend, meta, **opts)
+        else:
+            return response
+
+    def _wrap_commit(self, response, iids=None, redis_client=None, **options):
+        for id, iid in zip(response, iids):
+            id, flag, info = id
+            if int(flag):
+                yield instance_session_result(iid, True, id, False,
+                                              float(info))
+            else:
+                msg = info.decode(redis_client.encoding)
+                yield CommitException(msg)
+
+    def load_query(self, response, backend, meta, get=None, fields=None,
+                   fields_attributes=None, redis_client=None, **options):
+        if get:
+            tpy = meta.dfields.get(get).to_python
+            return [tpy(v, backend) for v in response]
+        else:
+            data, related = response
+            encoding = redis_client.encoding
+            data = self.build(data, meta, fields, fields_attributes, encoding)
+            related_fields = {}
+            if related:
+                for fname, rdata, fields in related:
+                    fname = native_str(fname, encoding)
+                    fields = tuple(native_str(f, encoding) for f in fields)
+                    related_fields[fname] =\
+                        self.load_related(meta, fname, rdata, fields, encoding)
+            return backend.objects_from_db(meta, data, related_fields)
+
+    def build(self, response, meta, fields, fields_attributes, encoding):
+        fields = tuple(fields) if fields else None
+        if fields:
+            if len(fields) == 1 and fields[0] in (meta.pkname(), ''):
+                for id in response:
+                    yield id, (), {}
+            else:
+                for id, fdata in response:
+                    yield id, fields, dict(zip(fields_attributes, fdata))
+        else:
+            for id, fdata in response:
+                yield id, None, pairs_to_dict(fdata, encoding)
+
+    def load_related(self, meta, fname, data, fields, encoding):
+        '''Parse data for related objects.'''
+        field = meta.dfields[fname]
+        if field in meta.multifields:
+            fmeta = field.structure_class()._meta
+            if fmeta.name in ('hashtable', 'zset'):
+                return ((native_str(id, encoding),
+                         pairs_to_dict(fdata, encoding)) for
+                        id, fdata in data)
+            else:
+                return ((native_str(id, encoding), fdata) for
+                        id, fdata in data)
+        else:
+            # this is data for stdmodel instances
+            return self.build(data, meta, fields, fields, encoding)
+
+
+class check_structures(RedisScript):
+    script = read_lua_file('structures')

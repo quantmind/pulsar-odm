@@ -4,9 +4,10 @@ from pulsar.apps.data import redis
 from odm.nosql import (NoSqlApi, NoSqlConnection, TABLE_STATEMENTS, green,
                        NoSqlCursor)
 
+from .scripts import RedisScript
 
 redis_parser = redis.redis_parser()
-
+LOAD_SCRIPTS = 'LOAD_SCRIPTS'
 
 class Connection(pulsar.Connection, NoSqlConnection):
 
@@ -44,7 +45,11 @@ class Cursor(NoSqlCursor):
             raise redis.RedisError
         if statement in TABLE_STATEMENTS:
             return
-        return self.connection.execute(statement, **parameters)
+        elif statement == LOAD_SCRIPTS:
+            for name, script in RedisScript._scripts.items():
+                pass
+        else:
+            return self.connection.execute(statement, **parameters)
 
     @green
     def executemany(self, statement, parameters):
