@@ -82,3 +82,23 @@ class MapperMixin:
     def test_mapper(self):
         mapper = self.mapper
         self.assertTrue(mapper.binds)
+
+    def test_create_task(self):
+        with self.mapper.begin() as session:
+            task = self.mapper.task(subject='simple task')
+            session.add(task)
+        self.assertTrue(task.id)
+
+    def test_update_task(self):
+        with self.mapper.begin() as session:
+            task = self.mapper.task(subject='simple task to update')
+            session.add(task)
+        self.assertTrue(task.id)
+        self.assertFalse(task.done)
+        with self.mapper.begin() as session:
+            task.done = True
+            session.add(task)
+
+        with self.mapper.begin() as session:
+            task = session.query(self.mapper.task).get(task.id)
+        self.assertTrue(task.done)

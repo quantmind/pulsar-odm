@@ -10,7 +10,6 @@ from sqlalchemy.orm.session import Session
 from pulsar import ImproperlyConfigured
 
 from .strategy import create_engine
-from .nosql import Engine
 
 
 logger = logging.getLogger('pulsar.odm')
@@ -222,33 +221,60 @@ class Mapper:
         a connection to the new database
         '''
         logger.info('Creating database "%s" in "%s"', database, engine)
-        if isinstance(engine, Engine):
-            return engine.database_create(database)
-        elif engine.name != 'sqlite':
-            conn = engine.connect()
-            # the connection will still be inside a transaction,
-            # so we have to end the open transaction with a commit
-            conn.execute("commit")
-            conn.execute('create database %s' % database)
-            conn.close()
+        create = self._get_callable(engine, 'database_create')
+        create(engine, database)
         url = copy(engine.url)
         url.database = database
         return str(url)
 
     def _database_drop(self, engine, database):
         logger.info('dropping database "%s" from "%s"', database, engine)
-        if engine.name == 'sqlite':
-            try:
-                os.remove(database)
-            except FileNotFoundError:
-                pass
-        elif isinstance(engine, Engine):
-            engine.database_drop(database)
+        drop = self._get_callable(engine, 'database_drop')
+        drop()
+
+    def _get_callable(self, engine, method_name):
+        dialect = engine.dialect
+        if hasattr(dialect, method_name):
+            return getattr(dialect, method_name)
         else:
-            conn = engine.connect()
-            conn.execute("commit")
-            conn.execute('drop database %s' % database)
-            conn.close()
+            scripts = engine_scripts[method_name]
+            if hasattr(scripts, dialect.name):
+                return getattr(scripts, dialect.name)
+            else:
+                return scripts.default
+
+
+class CreateDatabase:
+
+    def sqlite(self, engine, database):
+        pass
+
+    def default(self, engine, database):
+        conn = engine.connect()
+        # the connection will still be inside a transaction,
+        # so we have to end the open transaction with a commit
+        conn.execute("commit")
+        conn.execute('create database %s' % database)
+        conn.close()
+
+
+class DropDatabase:
+
+    def sqlite(self, engine, database):
+        try:
+            os.remove(database)
+        except FileNotFoundError:
+            pass
+
+    def default(self, engine, database):
+        conn = engine.connect()
+        conn.execute("commit")
+        conn.execute('drop database %s' % database)
+        conn.close()
+
+
+engine_scripts = {'database_create': CreateDatabase(),
+                  'database_drop': DropDatabase()}
 
 
 class OdmSession(Session):

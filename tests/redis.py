@@ -2,19 +2,11 @@ import tests
 
 import odm
 
-__test__ = False
-
 
 @tests.green
-class PostgreSqlTests(tests.TestCase):
+class PostgreSqlTests(tests.TestCase, tests.MapperMixin):
 
     @classmethod
     def url(cls):
         cls.dbname = '11'
-        return 'redis://%s' % cls.cfg.redis_server
-
-    def test_create_task(self):
-        with self.begin() as session:
-            task = tests.Task(subject='simple task')
-            session.add(task)
-        self.assertTrue(task.id)
+        return 'redis+green://%s' % cls.cfg.redis_server

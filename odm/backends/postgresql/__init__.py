@@ -1,7 +1,7 @@
 from sqlalchemy.dialects.postgresql.psycopg2 import PGDialect_psycopg2
 from sqlalchemy.dialects import registry
 
-from odm.pool import GreenletPool
+from .pool import GreenletPool
 
 
 class PGDGreen(PGDialect_psycopg2):
