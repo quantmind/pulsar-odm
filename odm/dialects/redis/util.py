@@ -1,4 +1,5 @@
 import os
+from hashlib import sha1
 
 
 p = os.path
@@ -94,11 +95,3 @@ class RedisScript(metaclass=RedisScriptMeta):
         :parameter options: Additional options for the callback.
         '''
         return response
-
-    def __call__(self, client, keys, args, options):
-        args = self.preprocess_args(client, args)
-        numkeys = len(keys)
-        keys_args = tuple(keys) + args
-        options.update({'script': self, 'redis_client': client})
-        return client.execute_command('EVALSHA', self.sha1, numkeys,
-                                      *keys_args, **options)

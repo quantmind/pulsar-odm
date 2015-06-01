@@ -11,15 +11,16 @@ class RedisDialect(NoSqlDialect):
 
     @classmethod
     def dbapi(cls):
-        from odm.backends.redis import api
+        from odm.dialects.redis import api
         return api.DBAPI(get_loop())
 
     def has_table(self, connection, table_name, schema=None):
         return False
 
     def initialize(self, connection):
-        self.server_version_info = connection.execute('INFO')
-        self.scripts = connection.execute('LOAD_SCRIPTS')
+        self.server_version_info = connection.execute('INFO').first()
+        return
+        #self.scripts = connection.execute('LOAD_SCRIPTS')
 
     def database_create(self, engine, database):
         pass
@@ -28,4 +29,4 @@ class RedisDialect(NoSqlDialect):
         pass
 
 
-registry.register("redis.green", "odm.backends.redis", "RedisDialect")
+registry.register("redis.green", "odm.dialects.redis", "RedisDialect")

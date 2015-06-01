@@ -13,7 +13,7 @@ class PGDGreen(PGDialect_psycopg2):
 
     @classmethod
     def dbapi(cls):
-        from odm.backends.postgresql import green
+        from odm.dialects.postgresql import green
         return green
 
     def create_connect_args(self, url):
@@ -23,4 +23,4 @@ class PGDGreen(PGDialect_psycopg2):
         return [[], opts]
 
 
-registry.register("postgresql.green", "odm.backends.postgresql", "PGDGreen")
+registry.register("postgresql.green", "odm.dialects.postgresql", "PGDGreen")

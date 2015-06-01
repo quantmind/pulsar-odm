@@ -159,6 +159,16 @@ class NoSqlCompiler(compiler.Compiled):
         return DROP_TABLE
 
 
+class NoSqlResultProxy(ResultProxy):
+    pass
+
+
+class NoSqlExecutionContext(DefaultExecutionContext):
+
+    def get_result_proxy(self):
+        return NoSqlResultProxy(self)
+
+
 class NoSqlDialect(Dialect):
     name = 'nosql'
     identifier_preparer = None
@@ -170,7 +180,7 @@ class NoSqlDialect(Dialect):
     max_identifier_length = 9999
     label_length = None
     execute_sequence_format = tuple
-    execution_ctx_cls = DefaultExecutionContext
+    execution_ctx_cls = NoSqlExecutionContext
     ddl_compiler = NoSqlCompiler
     statement_compiler = NoSqlCompiler
 

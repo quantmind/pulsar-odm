@@ -12,7 +12,7 @@ class RethinkDialect(NoSqlDialect):
 
     @classmethod
     def dbapi(cls):
-        from odm.backends.rethink import api
+        from odm.dialects.rethink import api
         return api.DBAPI(get_loop())
 
     def has_table(self, connection, table_name, schema=None):
@@ -45,4 +45,4 @@ class RethinkDialect(NoSqlDialect):
         raise NotImplementedError
 
 
-registry.register("redis.green", "odm.backends.redis", "RedisDialect")
+registry.register("redis.green", "odm.dialects.redis", "RedisDialect")
