@@ -2,11 +2,10 @@ import tests
 
 import odm
 
-__test__ = False
 
 @tests.green
 class RedisTests(tests.TestCase):
-# class RedisTests(tests.TestCase, tests.MapperMixin):
+    # class RedisTests(tests.TestCase, tests.MapperMixin):
 
     @classmethod
     def url(cls):

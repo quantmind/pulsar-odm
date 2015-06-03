@@ -77,9 +77,7 @@ def dict_update(original, data):
     return target
 
 
-############################################################################
-##    BATTERY INCLUDED REDIS SCRIPTS
-############################################################################
+#    BATTERY INCLUDED REDIS SCRIPTS
 class countpattern(RedisScript):
     script = '''\
 return # redis.call('keys', ARGV[1])

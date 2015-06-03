@@ -20,7 +20,7 @@ class RedisDialect(NoSqlDialect):
     def initialize(self, connection):
         self.server_version_info = connection.execute('INFO').first()
         return
-        #self.scripts = connection.execute('LOAD_SCRIPTS')
+        # self.scripts = connection.execute('LOAD_SCRIPTS')
 
     def database_create(self, engine, database):
         pass

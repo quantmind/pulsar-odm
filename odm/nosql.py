@@ -41,6 +41,26 @@ class GreenPool(pool.Pool):
         self._pool = Pool(creator, pool_size=pool_size, timeout=timeout)
         super().__init__(green(self._pool.connect), **kw)
 
+    def recreate(self):
+        self.logger.info("Pool recreating")
+        return self.__class__(self._pool._creator, pool_size=self.max_size(),
+                              timeout=self.timeout(),
+                              recycle=self._recycle, echo=self.echo,
+                              logging_name=self._orig_logging_name,
+                              use_threadlocal=self._use_threadlocal,
+                              reset_on_return=self._reset_on_return,
+                              _dispatch=self.dispatch,
+                              _dialect=self._dialect)
+
+    def dispose(self):
+        self._pool.close(False)
+
+    def max_size(self):
+        return self._pool.pool_size()
+
+    def timeout(self):
+        return self._pool._timeout
+
     def _do_get(self):
         return self._create_connection()
 
@@ -183,6 +203,10 @@ class NoSqlDialect(Dialect):
     execution_ctx_cls = NoSqlExecutionContext
     ddl_compiler = NoSqlCompiler
     statement_compiler = NoSqlCompiler
+    dbapi_type_map = {}
+    case_sensitive = False
+    description_encoding = None
+    requires_name_normalize = False
 
     def __init__(self, dbapi=None, **kw):
         self.dbapi = dbapi

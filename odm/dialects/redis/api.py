@@ -7,6 +7,7 @@ from odm.nosql import (NoSqlApi, NoSqlConnection, TABLE_STATEMENTS, green,
                        NoSqlCursor)
 
 from .scripts import RedisScript
+from .util import single_result
 
 EXECUTE_SCRIPT = 'EXECUTE_SCRIPT'
 LOAD_SCRIPTS = 'LOAD_SCRIPTS'
@@ -19,14 +20,15 @@ class Connection(redis.RedisStoreConnection, NoSqlConnection):
 
 
 class Cursor(NoSqlCursor):
+    _result = None
 
     def __init__(self, connection):
-        self._result = None
         self.connection = connection
 
     @property
     def description(self):
-        return self._result[0]
+        if self._result:
+            return self._result[0]
 
     def close(self):
         self.connection = None
@@ -47,14 +49,12 @@ class Cursor(NoSqlCursor):
         else:
             result = yield from self.connection.execute(
                 statement, *args, **parameters)
-        self._result = result
+        self._result = ((single_result(statement, result),), result)
 
     @green
     def executemany(self, statement, parameters):
         if not self.connection:
             raise redis.RedisError
-        if statement in TABLE_STATEMENTS:
-            return
         return self.connection.execute(statement, **parameters)
 
 

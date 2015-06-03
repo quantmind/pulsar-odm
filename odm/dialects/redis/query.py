@@ -1,7 +1,5 @@
 
-############################################################################
-##    REDIS QUERY CLASS
-############################################################################
+
 class RedisQuery(stdnet.BackendQuery):
     card = None
     _meta_info = None
@@ -239,9 +237,6 @@ class RedisQuery(stdnet.BackendQuery):
                 yield field.name, data
 
 
-############################################################################
-##    STRUCTURES
-############################################################################
 class RedisStructure(BackendStructure):
 
     def __init__(self, *args, **kwargs):
@@ -587,4 +582,3 @@ class numberarray_pushback(RedisScript):
 for _,v in ipairs(ARGV) do
     a:push_back(v,true)
 end''')
-
