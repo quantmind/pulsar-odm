@@ -48,6 +48,7 @@ class Cursor(NoSqlCursor):
         else:
             result = yield from self.connection.execute(
                 statement, *args, **parameters)
+
         self._set_execution(statement, result)
 
     @green
