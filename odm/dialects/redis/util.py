@@ -32,11 +32,6 @@ def read_lua_file(dotted_module, path=None, context=None):
     return data
 
 
-def single_result(name, result):
-    return (name, result.__class__.__name__,
-            None, None, None, None, None)
-
-
 class RedisScript(metaclass=RedisScriptMeta):
     '''Class which helps the sending and receiving lua scripts.
 

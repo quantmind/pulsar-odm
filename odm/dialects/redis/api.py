@@ -7,10 +7,17 @@ from odm.nosql import (NoSqlApi, NoSqlConnection, TABLE_STATEMENTS, green,
                        NoSqlCursor)
 
 from .scripts import RedisScript
-from .util import single_result
+
 
 EXECUTE_SCRIPT = 'EXECUTE_SCRIPT'
 LOAD_SCRIPTS = 'LOAD_SCRIPTS'
+
+
+DatabaseError = redis.RedisError
+
+
+class ProgrammingError(DatabaseError):
+    pass
 
 
 class Connection(redis.RedisStoreConnection, NoSqlConnection):
@@ -20,15 +27,7 @@ class Connection(redis.RedisStoreConnection, NoSqlConnection):
 
 
 class Cursor(NoSqlCursor):
-    _result = None
-
-    def __init__(self, connection):
-        self.connection = connection
-
-    @property
-    def description(self):
-        if self._result:
-            return self._result[0]
+    ProgrammingError = ProgrammingError
 
     def close(self):
         self.connection = None
@@ -49,7 +48,7 @@ class Cursor(NoSqlCursor):
         else:
             result = yield from self.connection.execute(
                 statement, *args, **parameters)
-        self._result = ((single_result(statement, result),), result)
+        self._set_execution(statement, result)
 
     @green
     def executemany(self, statement, parameters):
@@ -61,6 +60,9 @@ class Cursor(NoSqlCursor):
 class DBAPI(NoSqlApi):
     protocol_factory = partial(Connection, redis.Consumer)
     Error = redis.RedisError
+    DatabaseError = DatabaseError
+    ProgrammingError = ProgrammingError
+
     ResponseError = redis.ResponseError
 
     def __init__(self, *args, **kwargs):
