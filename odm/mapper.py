@@ -1,3 +1,4 @@
+import os
 import logging
 from copy import copy
 from contextlib import contextmanager
@@ -230,7 +231,7 @@ class Mapper:
     def _database_drop(self, engine, database):
         logger.info('dropping database "%s" from "%s"', database, engine)
         drop = self._get_callable(engine, 'database_drop')
-        drop()
+        drop(engine, database)
 
     def _get_callable(self, engine, method_name):
         dialect = engine.dialect

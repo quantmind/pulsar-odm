@@ -1,7 +1,7 @@
 '''Object Data Mapper for pulsar asynchronous framework'''
 import os
 
-from .mapper import Model, Mapper, logger
+from .mapper import Model, Mapper, OdmSession, logger
 from .strategy import create_engine
 from . import dialects
 
