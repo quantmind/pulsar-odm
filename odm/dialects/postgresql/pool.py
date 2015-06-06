@@ -29,7 +29,8 @@ class GreenletPool(pool.Pool):
         self.logger.info("Pool disposed. %s", self.status())
 
     def status(self):
-        return "%s size: %d" % (self._attribute, len(self._all_conns))
+        return "size: %d, available: %d" % (self.size(),
+                                            len(self._available_connections))
 
     def size(self):
         return len(self._connections)
