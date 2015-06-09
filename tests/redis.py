@@ -4,6 +4,7 @@ import odm
 
 __test__ = False
 
+
 @tests.green
 class RedisTests(tests.TestCase):
     # class RedisTests(tests.TestCase, tests.MapperMixin):
