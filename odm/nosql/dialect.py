@@ -110,4 +110,3 @@ class NoSqlDialect(Dialect):
     @util.memoized_property
     def _type_memos(self):
         return weakref.WeakKeyDictionary()
-

@@ -4,7 +4,7 @@ import json
 
 from setuptools import setup, find_packages
 
-os.environ['pulsar_odm_setup'] = 'running'
+os.environ['pulsar_odm_setup'] = 'yes'
 odm = __import__('odm')
 
 
