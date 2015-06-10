@@ -5,6 +5,7 @@ from functools import wraps
 from datetime import datetime
 
 import odm
+from odm.types import JSONType
 
 from sqlalchemy import MetaData, Column, Integer, String, Boolean, DateTime
 from sqlalchemy.orm import sessionmaker
@@ -18,6 +19,7 @@ class Task(odm.Model):
     subject = Column(String(250))
     done = Column(Boolean, default=False)
     created = Column(DateTime, default=datetime.utcnow)
+    info = Column(JSONType)
 
 
 def randomname(prefix):
