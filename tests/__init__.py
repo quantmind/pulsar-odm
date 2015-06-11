@@ -20,6 +20,7 @@ class Task(odm.Model):
     done = Column(Boolean, default=False)
     created = Column(DateTime, default=datetime.utcnow)
     info = Column(JSONType)
+    info2 = Column(JSONType(binary=False))
 
 
 def randomname(prefix):
@@ -94,13 +95,17 @@ class MapperMixin:
     def test_update_task(self):
         with self.mapper.begin() as session:
             task = self.mapper.task(subject='simple task to update')
+            task.info = dict(extra='extra info')
             session.add(task)
         self.assertTrue(task.id)
         self.assertFalse(task.done)
+        self.assertEqual(task.info['extra'], 'extra info')
         with self.mapper.begin() as session:
             task.done = True
             session.add(task)
 
         with self.mapper.begin() as session:
             task = session.query(self.mapper.task).get(task.id)
+
         self.assertTrue(task.done)
+        self.assertEqual(task.info['extra'], 'extra info')
