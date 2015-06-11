@@ -1,7 +1,7 @@
 Several parts of this library have been taken from the public domain.
 This document is a lsit of sources used by the authors.
 
-## SqlAlchemy_utils
+## SqlAlchemy utils
 
 Original Copyright:
 
@@ -11,4 +11,7 @@ Original Copyright:
 
 We have used:
 
-* JSONType implementation
+* ChoiceType
+* IPAddressType
+* JSONType
+* UUIDType

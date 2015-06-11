@@ -14,7 +14,7 @@ class JSONType(sa.types.TypeDecorator):
     ::
 
 
-        from sqlalchemy_utils import JSONType
+        from odm.types import JSONType
 
 
         class Product(Base):
