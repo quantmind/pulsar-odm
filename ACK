@@ -1,5 +1,5 @@
-Several parts of this library have been taken from the public domain.
-This document is a lsit of sources used by the authors.
+Same parts of this library have been taken from the public domain.
+This document is a list of sources used by the authors.
 
 ## SqlAlchemy utils
 
@@ -15,3 +15,4 @@ We have used:
 * IPAddressType
 * JSONType
 * UUIDType
+* get_columns

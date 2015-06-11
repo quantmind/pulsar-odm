@@ -50,7 +50,7 @@ class IPAddressType(types.TypeDecorator, ScalarCoercible):
         self.impl = types.Unicode(max_length)
 
     def process_bind_param(self, value, dialect):
-        return six.text_type(value) if value else None
+        return str(value) if value else None
 
     def process_result_value(self, value, dialect):
         return ip_address(value) if value else None

@@ -1,3 +1,5 @@
+from inspect import isclass
+
 import sqlalchemy as sa
 
 

@@ -1,11 +1,12 @@
 import unittest
 import string
 import inspect
+from uuid import uuid4
 from functools import wraps
 from datetime import datetime
 
 import odm
-from odm.types import JSONType
+from odm.types import JSONType, UUIDType
 
 from sqlalchemy import MetaData, Column, Integer, String, Boolean, DateTime
 from sqlalchemy.orm import sessionmaker
@@ -15,7 +16,7 @@ from pulsar.apps.greenio import GreenPool
 
 
 class Task(odm.Model):
-    id = Column(Integer, primary_key=True)
+    id = Column(UUIDType, primary_key=True)
     subject = Column(String(250))
     done = Column(Boolean, default=False)
     created = Column(DateTime, default=datetime.utcnow)
@@ -88,13 +89,15 @@ class MapperMixin:
 
     def test_create_task(self):
         with self.mapper.begin() as session:
-            task = self.mapper.task(subject='simple task')
+            task = self.mapper.task(id=uuid4(),
+                                    subject='simple task')
             session.add(task)
         self.assertTrue(task.id)
 
     def test_update_task(self):
         with self.mapper.begin() as session:
-            task = self.mapper.task(subject='simple task to update')
+            task = self.mapper.task(id=uuid4(),
+                                    subject='simple task to update')
             task.info = dict(extra='extra info')
             session.add(task)
         self.assertTrue(task.id)
