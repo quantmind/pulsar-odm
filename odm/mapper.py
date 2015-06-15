@@ -23,12 +23,25 @@ class BaseModel(object):
         return self.__name__.lower()
 
     @classmethod
-    def create_table(cls, name, *columns, info=None, **kwargs):
+    def create_table(cls, name, *columns, **kwargs):
         '''Create a new table wuth the same metadata and info
         '''
-        info = update_info(cls, info)
-        table = Table(name, cls.metadata, *columns, info=info, **kwargs)
+        kwargs = table_args(cls, **kwargs)
+        table = Table(name, cls.metadata, *columns, **kwargs)
         return table
+
+
+def table_args(cls, **kwargs):
+    args = getattr(cls, '__table_args__', {}).copy()
+
+    for key, value in kwargs.items():
+        if key == 'info' and key in args:
+            new_value = args['info'].copy()
+            new_value.update(value)
+            value = new_value
+        args[key] = value
+
+    return args
 
 
 def update_info(cls, info):
