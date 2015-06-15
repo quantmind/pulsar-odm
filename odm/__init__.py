@@ -11,6 +11,6 @@ __homepage__ = "https://github.com/quantmind/pulsar-odm"
 
 
 if os.environ.get('pulsar_odm_setup') != 'yes':
-    from .mapper import Model, Mapper, OdmSession, logger
+    from .mapper import Model, Mapper, OdmSession, logger, model_base
     from .strategy import create_engine
     from . import dialects

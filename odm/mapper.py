@@ -3,7 +3,7 @@ import logging
 from copy import copy
 from contextlib import contextmanager
 
-from sqlalchemy import MetaData, event
+from sqlalchemy import MetaData, Table, event
 from sqlalchemy.ext.declarative import DeclarativeMeta
 from sqlalchemy.ext.declarative import declarative_base, declared_attr
 from sqlalchemy.orm.session import Session
@@ -22,8 +22,44 @@ class BaseModel(object):
     def __tablename__(self):
         return self.__name__.lower()
 
+    @classmethod
+    def create_table(cls, name, *columns, info=None, **kwargs):
+        '''Create a new table wuth the same metadata and info
+        '''
+        info = update_info(cls, info)
+        table = Table(name, cls.metadata, *columns, info=info, **kwargs)
+        return table
 
-Model = declarative_base(cls=BaseModel)
+
+def update_info(cls, info):
+    args = getattr(cls, '__table_args__', {})
+    if 'info' in args:
+        new_info = args['info'].copy()
+        if info:
+            new_info.update(info)
+        return new_info
+    else:
+        return info
+
+
+def model_base(bind_label=None, metadata=None, info=None):
+    '''Create a base declarative class
+    '''
+    if metadata is None:
+        metadata = MetaData()
+
+    Model = declarative_base(metadata=metadata, cls=BaseModel)
+    if bind_label:
+        args = getattr(Model, '__table_args__', {})
+        if 'info' not in args:
+            args['info'] = {}
+        args['info']['bind_label'] = bind_label
+        Model.__table_args__ = args
+
+    return Model
+
+
+Model = model_base()
 
 
 class Mapper:
@@ -58,15 +94,6 @@ class Mapper:
             if getattr(dialect, 'is_green', False):
                 self.is_green = True
             self._engines[key] = engine
-
-        if self.is_green:
-            for engine in self.engines():
-                dialect = engine.dialect
-                # Dialect requires Green Pool
-                if not getattr(dialect, 'is_green', False):
-                    raise ImproperlyConfigured('Cannot combine engines with '
-                                               'different concurrency '
-                                               'paradigms')
 
     def __getitem__(self, model):
         return self._declarative_register[model]
