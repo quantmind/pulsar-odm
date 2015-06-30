@@ -1,6 +1,4 @@
 import os
-import sys
-import json
 
 from setuptools import setup, find_packages
 

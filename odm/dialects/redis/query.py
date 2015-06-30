@@ -1,6 +1,10 @@
+import json
+from functools import partial
+
+from .util import RedisScript, read_lua_file
 
 
-class RedisQuery(stdnet.BackendQuery):
+class RedisQuery:
     card = None
     _meta_info = None
     script_dep = {'script_dependency': ('build_query', 'move2set')}

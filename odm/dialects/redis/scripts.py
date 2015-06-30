@@ -1,8 +1,6 @@
-import os
-from hashlib import sha1
 from collections import namedtuple
-from datetime import datetime
-from copy import copy
+
+from pulsar.utils.string import native_str
 
 from .util import RedisScript, read_lua_file
 
