@@ -6,7 +6,6 @@ from pulsar import ImproperlyConfigured
 
 
 class ScalarCoercible(object):
-
     def _coerce(self, value):
         raise NotImplementedError
 
@@ -15,7 +14,6 @@ class ScalarCoercible(object):
 
 
 class Choice(object):
-
     def __init__(self, code, value):
         self.code = code
         self.value = value
@@ -41,13 +39,13 @@ class Choice(object):
 class ChoiceType(types.TypeDecorator, ScalarCoercible):
     impl = types.Unicode(255)
 
-    def __init__(self, choices, impl=None):
+    def __init__(self, choices, impl=None, **kwargs):
         self.choices = choices
 
         if isinstance(choices, type) and issubclass(choices, Enum):
-            self.type_impl = EnumTypeImpl(enum_class=choices)
+            self.type_impl = EnumTypeImpl(enum_class=choices, **kwargs)
         else:
-            self.type_impl = ChoiceTypeImpl(choices=choices)
+            self.type_impl = ChoiceTypeImpl(choices=choices, **kwargs)
 
         if impl:
             self.impl = impl
@@ -97,7 +95,7 @@ class ChoiceTypeImpl(object):
 class EnumTypeImpl(object):
     """The implementation for the ``Enum`` usage."""
 
-    def __init__(self, enum_class):
+    def __init__(self, enum_class, bind_by_name=True):
         if Enum is None:
             raise ImproperlyConfigured(
                 "'enum34' package is required to use 'EnumType' in Python "
@@ -109,12 +107,22 @@ class EnumTypeImpl(object):
             )
 
         self.enum_class = enum_class
+        self.bind_by_name = bind_by_name
 
     def _coerce(self, value):
         return self.enum_class(value) if value else None
 
     def process_bind_param(self, value, dialect):
-        return self.enum_class(value).value if value else None
+        ret = None
+        if isinstance(value, Enum):
+            ret = value.value
+        elif self.bind_by_name and isinstance(value, str):
+            for e in self.enum_class:
+                if e.name.lower() == value.lower():
+                    ret = e.value
+        elif value:
+            ret = self.enum_class(value).value
+        return ret
 
     def process_result_value(self, value, dialect):
         return self.enum_class(value) if value else None
