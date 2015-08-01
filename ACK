@@ -1,0 +1,18 @@
+Same parts of this library have been taken from the public domain.
+This document is a list of sources used by the authors.
+
+## SqlAlchemy utils
+
+Original Copyright:
+
+  Copyright (c) 2012, Konsta Vesterinen
+
+  All rights reserved.
+
+We have used:
+
+* ChoiceType
+* IPAddressType
+* JSONType
+* UUIDType
+* get_columns

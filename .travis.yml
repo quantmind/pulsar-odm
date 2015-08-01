@@ -1,5 +1,7 @@
 language: python
 
+sudo: false
+
 python:
   - "3.4"
 
@@ -7,6 +9,12 @@ install:
   - pip install -r requirements-dev.txt
   - pip install -r requirements.txt
   - python setup.py install
+
+services:
+  - redis-server
+
+addons:
+  postgresql: "9.4"
 
 before_script:
   - psql -U postgres -c "CREATE ROLE odm WITH PASSWORD 'odmtest';"
@@ -16,8 +24,8 @@ before_script:
   - psql -U postgres -c "GRANT ALL PRIVILEGES ON DATABASE odmtests to odm;"
 
 script:
-  - pep8
-  - sudo rm -rf odm
+  - flake8
+  - rm -rf odm
   - python -m runtests --coverage
   - python -m runtests --coveralls
 
@@ -27,3 +35,4 @@ notifications:
 branches:
   only:
     - master
+    - dev

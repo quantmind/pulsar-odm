@@ -1,9 +1,11 @@
 from asyncio import Future
 
 from greenlet import getcurrent
-from psycopg2 import *
+import psycopg2
+from psycopg2 import *      # noqa
 
-from pulsar import ImproperlyConfigured
+
+__version__ = psycopg2.__version__
 
 
 def psycopg2_wait_callback(conn):
@@ -74,6 +76,7 @@ def _done_wait_fd(fd, future, read):
 try:
     extensions.POLL_OK
 except AttributeError:  # pragma    nocover
+    from pulsar import ImproperlyConfigured
     raise ImproperlyConfigured(
         'Psycopg2 does not have support for asynchronous connections. '
         'You need at least version 2.2.0 of Psycopg2.')

@@ -25,8 +25,7 @@ def run(**params):
         if os.path.isfile('.coveralls-repo-token'):
             with open('.coveralls-repo-token') as f:
                 repo_token = f.read().strip()
-        code = coveralls(strip_dirs=strip_dirs,
-                         repo_token=repo_token)
+        coveralls(strip_dirs=strip_dirs, repo_token=repo_token)
         sys.exit(0)
     # Run the test suite
     #

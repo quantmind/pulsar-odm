@@ -5,7 +5,7 @@ from pulsar.apps import wsgi
 from pulsar.apps.wsgi import route, Json, String
 from pulsar.apps.greenio import GreenWSGI, GreenPool
 
-from sqlalchemy import Column, Integer, String
+import sqlalchemy as sql
 
 import odm
 
@@ -23,13 +23,13 @@ class Engine(pulsar.Setting):
 
 
 class World(odm.Model):
-    id = Column(Integer, primary_key=True)
-    randomNumber = Column(Integer)
+    id = sql.Column(sql.Integer, primary_key=True)
+    randomNumber = sql.Column(sql.Integer)
 
 
 class Fortune(odm.Model):
-    id = Column(Integer, primary_key=True)
-    message = Column(String)
+    id = sql.Column(sql.Integer, primary_key=True)
+    message = sql.Column(sql.String)
 
 
 class Router(wsgi.Router):
@@ -39,8 +39,8 @@ class Router(wsgi.Router):
         '''Simply list test urls
         '''
         data = {}
-        for route in self.routes:
-            data[route.name] = request.absolute_uri(route.path())
+        for router in self.routes:
+            data[router.name] = request.absolute_uri(router.path())
         return Json(data).http_response(request)
 
     @route()

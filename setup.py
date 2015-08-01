@@ -1,11 +1,13 @@
 import os
-import sys
-import json
 
 from setuptools import setup, find_packages
 
-os.environ['pulsar_odm_setup'] = 'yes'
-odm = __import__('odm')
+try:
+    import pulsar   # noqa
+except ImportError:
+    os.environ['pulsar_odm_setup'] = 'yes'
+
+import odm
 
 
 def read(fname):

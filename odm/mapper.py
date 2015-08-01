@@ -3,7 +3,7 @@ import logging
 from copy import copy
 from contextlib import contextmanager
 
-from sqlalchemy import MetaData, event
+from sqlalchemy import MetaData, Table, event, inspect
 from sqlalchemy.ext.declarative import DeclarativeMeta
 from sqlalchemy.ext.declarative import declarative_base, declared_attr
 from sqlalchemy.orm.session import Session
@@ -22,8 +22,57 @@ class BaseModel(object):
     def __tablename__(self):
         return self.__name__.lower()
 
+    @classmethod
+    def create_table(cls, name, *columns, **kwargs):
+        '''Create a new table wuth the same metadata and info
+        '''
+        kwargs = table_args(cls, **kwargs)
+        table = Table(name, cls.metadata, *columns, **kwargs)
+        return table
 
-Model = declarative_base(cls=BaseModel)
+
+def table_args(cls, **kwargs):
+    args = getattr(cls, '__table_args__', {}).copy()
+
+    for key, value in kwargs.items():
+        if key == 'info' and key in args:
+            new_value = args['info'].copy()
+            new_value.update(value)
+            value = new_value
+        args[key] = value
+
+    return args
+
+
+def update_info(cls, info):
+    args = getattr(cls, '__table_args__', {})
+    if 'info' in args:
+        new_info = args['info'].copy()
+        if info:
+            new_info.update(info)
+        return new_info
+    else:
+        return info
+
+
+def model_base(bind_label=None, metadata=None, info=None):
+    '''Create a base declarative class
+    '''
+    if metadata is None:
+        metadata = MetaData()
+
+    Model = declarative_base(metadata=metadata, cls=BaseModel)
+    if bind_label:
+        args = getattr(Model, '__table_args__', {})
+        if 'info' not in args:
+            args['info'] = {}
+        args['info']['bind_label'] = bind_label
+        Model.__table_args__ = args
+
+    return Model
+
+
+Model = model_base()
 
 
 class Mapper:
@@ -58,15 +107,6 @@ class Mapper:
             if getattr(dialect, 'is_green', False):
                 self.is_green = True
             self._engines[key] = engine
-
-        if self.is_green:
-            for engine in self.engines():
-                dialect = engine.dialect
-                # Dialect requires Green Pool
-                if not getattr(dialect, 'is_green', False):
-                    raise ImproperlyConfigured('Cannot combine engines with '
-                                               'different concurrency '
-                                               'paradigms')
 
     def __getitem__(self, model):
         return self._declarative_register[model]
@@ -205,17 +245,8 @@ class Mapper:
         return tables
 
     def _database_all(self, engine):
-        if isinstance(engine, Store):
-            return engine.database_all()
-        elif engine.name == 'sqlite':
-            database = engine.url.database
-            if os.path.isfile(database):
-                return [database]
-            else:
-                return []
-        else:
-            insp = inspect(engine)
-            return insp.get_schema_names()
+        all = self._get_callable(engine, 'database_all')
+        return all(engine)
 
     def _database_create(self, engine, database):
         '''Create a new database and return a new url representing
@@ -274,8 +305,23 @@ class DropDatabase:
         conn.close()
 
 
+class AllDatabase:
+
+    def sqlite(self, engine):
+        database = engine.url.database
+        if os.path.isfile(database):
+            return [database]
+        else:
+            return []
+
+    def default(self, engine):
+        insp = inspect(engine)
+        return insp.get_schema_names()
+
+
 engine_scripts = {'database_create': CreateDatabase(),
-                  'database_drop': DropDatabase()}
+                  'database_drop': DropDatabase(),
+                  'database_all': AllDatabase()}
 
 
 class OdmSession(Session):
@@ -288,7 +334,7 @@ class OdmSession(Session):
     def __init__(self, mapper, **options):
         #: The application that this session belongs to.
         self.mapper = mapper
-        # self.register()
+        self.register()
         super().__init__(**options)
 
     def register(self):
@@ -301,8 +347,14 @@ class OdmSession(Session):
         event.listen(self, 'after_commit', self.after_commit)
         event.listen(self, 'after_rollback', self.after_rollback)
 
-    @staticmethod
-    def record_ops(session, flush_context=None, instances=None):
+    @classmethod
+    def signal(cls, session, changes, event):
+        '''Signal changes on session
+        '''
+        pass
+
+    @classmethod
+    def record_ops(cls, session, flush_context=None, instances=None):
         try:
             d = session._model_changes
         except AttributeError:
@@ -316,33 +368,32 @@ class OdmSession(Session):
                 key = state.identity_key if state.has_identity else id(target)
                 d[key] = (target, operation)
 
-    @staticmethod
-    def before_commit(session):
+    @classmethod
+    def before_commit(cls, session):
         try:
             d = session._model_changes
         except AttributeError:
             return
 
-        # if d:
-        #     before_models_committed.send(session.app,
-        #                                  changes=list(d.values()))
+        if d:
+            cls.signal(session, d, 'on_before_commit')
 
-    @staticmethod
-    def after_commit(session):
+    @classmethod
+    def after_commit(cls, session):
         try:
             d = session._model_changes
         except AttributeError:
             return
 
-        # if d:
-        #     models_committed.send(session.app, changes=list(d.values()))
-        #     d.clear()
+        if d:
+            cls.signal(session, d, 'on_after_commit')
+            d.clear()
 
-    @staticmethod
-    def after_rollback(session):
+    @classmethod
+    def after_rollback(cls, session):
         try:
             d = session._model_changes
         except AttributeError:
             return
 
-        # d.clear()
+        d.clear()
