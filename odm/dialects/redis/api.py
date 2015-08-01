@@ -6,17 +6,11 @@ from odm.nosql import (NoSqlApi, NoSqlConnection, TABLE_STATEMENTS, green,
                        NoSqlCursor)
 
 from .scripts import RedisScript
+from .errors import *   # noqa
 
 
 EXECUTE_SCRIPT = 'EXECUTE_SCRIPT'
 LOAD_SCRIPTS = 'LOAD_SCRIPTS'
-
-
-DatabaseError = redis.RedisError
-
-
-class ProgrammingError(DatabaseError):
-    pass
 
 
 class Connection(redis.RedisStoreConnection, NoSqlConnection):
