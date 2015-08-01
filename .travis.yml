@@ -25,7 +25,7 @@ before_script:
 
 script:
   - flake8
-  - sudo rm -rf odm
+  - rm -rf odm
   - python -m runtests --coverage
   - python -m runtests --coveralls
 
