@@ -8,8 +8,7 @@ from datetime import datetime
 import odm
 from odm.types import JSONType, UUIDType
 
-from sqlalchemy import MetaData, Column, Integer, String, Boolean, DateTime
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy import Column, String, Boolean, DateTime
 
 from pulsar.utils.string import random_string
 from pulsar.apps.greenio import GreenPool

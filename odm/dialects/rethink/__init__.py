@@ -4,11 +4,10 @@ from odm.nosql import NoSqlDialect, get_loop, green
 
 
 class RethinkDialect(NoSqlDialect):
-    '''Redis green dialect
+    '''RethinkDB green dialect
     '''
-    name = 'redis'
+    name = 'rethink'
     is_green = True
-    statement_compiler = RedisCompiled
 
     @classmethod
     def dbapi(cls):

@@ -2,7 +2,7 @@ from asyncio import Future
 
 from greenlet import getcurrent
 import psycopg2
-from psycopg2 import *
+from psycopg2 import *      # noqa
 
 
 __version__ = psycopg2.__version__

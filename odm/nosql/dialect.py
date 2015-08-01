@@ -3,7 +3,7 @@ import weakref
 from sqlalchemy.engine import Dialect
 from sqlalchemy import util, types
 
-from .defaults import NoSqlCompiler, NoSqlExecutionContext, NoSqlCompiler
+from .defaults import NoSqlCompiler, NoSqlExecutionContext
 from .pool import GreenPool
 
 

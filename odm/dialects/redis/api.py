@@ -1,6 +1,5 @@
 from functools import partial
 
-import pulsar
 from pulsar.apps.data import redis
 
 from odm.nosql import (NoSqlApi, NoSqlConnection, TABLE_STATEMENTS, green,

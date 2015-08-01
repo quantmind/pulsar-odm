@@ -1,5 +1,5 @@
 import csv
-from asyncio import async, wait, TimeoutError
+from asyncio import async, wait
 from random import randint
 from urllib.parse import urlparse
 from functools import reduce

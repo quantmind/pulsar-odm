@@ -1,8 +1,10 @@
 from collections import namedtuple
 
 from pulsar.utils.string import native_str
+from pulsar.utils.structures import AttributeDictionary
 
 from .util import RedisScript, read_lua_file
+from .errors import OperationalError
 
 MIN_FLOAT = -1.e99
 
@@ -14,6 +16,12 @@ ODM_SCRIPTS = ('odmrun', 'move2set', 'zdiffstore')
 ############################################################################
 
 
+RedisKey = AttributeDictionary
+instance_session_result = namedtuple('instance_session_result',
+                                     'iid persistent id deleted score')
+session_data = namedtuple('session_data',
+                          'meta dirty deletes queries structures')
+session_result = namedtuple('session_result', 'meta results')
 redis_connection = namedtuple('redis_connection', 'address db')
 
 
@@ -175,7 +183,7 @@ class OdmRun(RedisScript):
                                               float(info))
             else:
                 msg = info.decode(redis_client.encoding)
-                yield CommitException(msg)
+                yield OperationalError(msg)
 
     def load_query(self, response, backend, meta, get=None, fields=None,
                    fields_attributes=None, redis_client=None, **options):

@@ -1,6 +1,4 @@
-from rethinkdb import ast
-
-import pulsar
+from rethinkdb import ast, start_query
 
 from odm.nosql import NoSqlApi
 

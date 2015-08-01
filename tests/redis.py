@@ -1,7 +1,5 @@
 import tests
 
-import odm
-
 __test__ = False
 
 

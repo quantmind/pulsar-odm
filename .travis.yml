@@ -1,5 +1,7 @@
 language: python
 
+sudo: false
+
 python:
   - "3.4"
 
@@ -16,7 +18,7 @@ before_script:
   - psql -U postgres -c "GRANT ALL PRIVILEGES ON DATABASE odmtests to odm;"
 
 script:
-  - pep8
+  - flake8
   - sudo rm -rf odm
   - python -m runtests --coverage
   - python -m runtests --coveralls

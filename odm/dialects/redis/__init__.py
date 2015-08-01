@@ -1,6 +1,6 @@
 from sqlalchemy.dialects import registry
 
-from odm.nosql import NoSqlDialect, get_loop, green
+from odm.nosql import NoSqlDialect, get_loop
 
 
 class RedisDialect(NoSqlDialect):

@@ -1,5 +1,4 @@
-import sqlalchemy
-from sqlalchemy.engine import Connectable, ResultProxy
+from sqlalchemy.engine import ResultProxy
 from sqlalchemy.engine.default import DefaultExecutionContext
 from sqlalchemy.sql import compiler, crud
 from sqlalchemy import util

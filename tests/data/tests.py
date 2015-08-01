@@ -59,7 +59,7 @@ class OdmTests(unittest.TestCase):
         self.assertTrue(User._meta in mapper)
         self.assertTrue(str(mapper))
 
-    def test_query(self):
+    def test_query_base(self):
         mapper = self.mapper
         query = mapper.user.query()
         self.assertEqual(query._manager, mapper.user)
@@ -123,10 +123,10 @@ class OdmTests(unittest.TestCase):
 
     def test_query(self):
         mapper = self.mapper
-        user1 = yield from mapper.user(username='pluto1',
-                                       email='pluto1@test.com').save()
-        user2 = yield from mapper.user(username='pluto2',
-                                       email='pluto2@test.com').save()
+        yield from mapper.user(username='pluto1',
+                               email='pluto1@test.com').save()
+        yield from mapper.user(username='pluto2',
+                               email='pluto2@test.com').save()
         query = mapper.user.query()
         self.assertIsInstance(query, odm.Query)
         self.assertEqual(query._manager, mapper.user)

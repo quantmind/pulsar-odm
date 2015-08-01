@@ -1,5 +1,6 @@
 import os
 from hashlib import sha1
+from itertools import chain
 
 
 p = os.path
@@ -95,3 +96,11 @@ class RedisScript(metaclass=RedisScriptMeta):
         :parameter options: Additional options for the callback.
         '''
         return response
+
+
+def unique_tuple(*iterables):
+    vals = []
+    for v in chain(*[it for it in iterables if it]):
+        if v not in vals:
+            vals.append(v)
+    return tuple(vals)
