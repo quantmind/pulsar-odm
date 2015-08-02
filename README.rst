@@ -73,12 +73,16 @@ one needs to use pulsar GreenPool_ as the following snippet highlights:
 
 The ``example`` function is executed in a greenlet other than the main one. This is important otherwise the call fails:
 
-.. code::python
+.. code:: python
 
     >> example(mp)
     >> Traceback (most recent call last):
     ...
     RuntimeError: acquire in main greenlet
+
+Running the function on the greenlet pool guarantees the correct asynchronous execution. When psycopg2_
+executes a command against the database on a child greenlet, it switches control to the parent (main) greenlet, which is controlled by the asyncio eventloop so that other asynchronous operations can be carried out.
+Once the result of the execution is ready, the execution switches back to the original child greenlet so that the ``example`` function can continue.
 
 Testing
 ==========
