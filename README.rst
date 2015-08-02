@@ -71,6 +71,14 @@ one needs to use pulsar GreenPool_ as the following snippet highlights:
         task = pool._loop.run_until_complete(pool.submit(example, mp))
         print(task)
 
+The ``example`` function is executed in a greenlet other than the main one. This is important otherwise the call fails:
+
+.. code::python
+
+    >> example(mp)
+    >> Traceback (most recent call last):
+    ...
+    RuntimeError: acquire in main greenlet
 
 Testing
 ==========
