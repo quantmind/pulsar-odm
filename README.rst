@@ -57,11 +57,12 @@ one need to use pulsar GreenPool_:
     def example(mapper):
         with mapper.begin() as session:
             task = mapper.task(subject='my task')
+            session.add(task)
         return task
 
     in __name__ == '__main__':
         pool = GreenPool()
-        mapper = odm.mapper('postgresql+green://...')
+        mapper = odm.Mapper('postgresql+green://...')
         mapper.register(Task)
         task = pool._loop.run_until_complete(pool.submit(example, mapper))
 
@@ -69,11 +70,10 @@ one need to use pulsar GreenPool_:
 Testing
 ==========
 
-For testing postgreSQL create a new role::
+To run tests, create a new role and database in postgresql::
 
     CREATE ROLE odm WITH PASSWORD 'odmtest';
-    ALTER ROLE odm CREATEDB;
-    ALTER ROLE odm LOGIN;
+    ALTER ROLE odm CREATEDB LOGIN;
     CREATE DATABASE odmtests;
     GRANT ALL PRIVILEGES ON DATABASE odmtests to odm;
 
