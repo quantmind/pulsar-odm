@@ -25,7 +25,7 @@ provide an implicit asynchronous object data mapper to use with code written
 with asyncio_.
 Currently only one dialect is implemented and tested:
 
-* postgres+green, postgresql dialect with psycopg2_ and greenelt_
+* postgres+green, postgresql dialect with psycopg2_ and greenlet_
 
 Usage
 ==========
@@ -39,15 +39,31 @@ one need to use pulsar GreenPool_:
 
 .. code:: python
 
+    from datetime import datetime
+
+    from sqlalchemy import Integer, Column, String, DateTime, Boolean
+    
     from pulsar.apps.greenio import GreenPool
-
-    def example():
+    
+    import odm
+    
+    
+    class Task(odm.Model):
+        id = Column(Integer, primary_key=True)
+        subject = Column(String(250))
+        done = Column(Boolean, default=False)
+        created = Column(DateTime, default=datetime.utcnow)
+    
+    def example(mapper):
         with mapper.begin() as session:
-            task = mapper.task()
+            task = mapper.task(subject='my task')
+        return task
 
-    pool = GreenPool()
-
-    yield from pool.submit(example)
+    in __name__ == '__main__':
+        pool = GreenPool()
+        mapper = odm.mapper('postgresql+green://...')
+        mapper.register(Task)
+        task = pool._loop.run_until_complete(pool.submit(example, mapper))
 
 
 Testing
