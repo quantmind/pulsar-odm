@@ -18,6 +18,7 @@ if os.environ.get('pulsar_odm_setup') != 'yes':
     from .strategy import create_engine
     from . import dialects
 
+    __version__ = get_version(VERSION)
+
     __all__ = ['Model', 'Mapper', 'OdmSession', 'logger', 'model_base',
                'table_args', 'create_engine', 'dialects']
-    __version__ = get_version(VERSION)
