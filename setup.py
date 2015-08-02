@@ -1,5 +1,5 @@
 import os
-
+import sys
 from setuptools import setup, find_packages
 
 try:
@@ -7,7 +7,8 @@ try:
 except ImportError:
     os.environ['pulsar_odm_setup'] = 'yes'
 
-import odm
+package_name = 'pulsar-odm'
+mod = __import__('odm')
 
 
 def read(fname):
@@ -25,15 +26,17 @@ def requirements():
     return result
 
 
-if __name__ == '__main__':
-    setup(name='pulsar-odm',
+def run(argv=None):
+    if argv:
+        sys.argv = list(argv)
+    setup(name=package_name,
           zip_safe=False,
-          version=odm.__version__,
-          author=odm.__author__,
-          author_email=odm.__contact__,
-          url=odm.__homepage__,
+          version=mod.__version__,
+          author=mod.__author__,
+          author_email=mod.__contact__,
+          url=mod.__homepage__,
           license='BSD',
-          description=odm.__doc__,
+          description=mod.__doc__,
           long_description=read('README.rst'),
           packages=find_packages(exclude=('tests', 'tests.*')),
           install_requires=requirements(),
@@ -45,3 +48,6 @@ if __name__ == '__main__':
                        'Programming Language :: Python',
                        'Programming Language :: Python :: 3.4',
                        'Topic :: Utilities'])
+
+if __name__ == '__main__':
+    run()

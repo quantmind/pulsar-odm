@@ -3,6 +3,7 @@ Pulsar Object data mapper
 
 :Master CI: |master-build|_ |coverage-master|
 :Dev CI: |dev-build|_ |coverage-dev|
+:Downloads: http://pypi.python.org/pypi/pulsar-odm
 :Source: https://github.com/quantmind/pulsar-odm
 :Mailing list: `google user group`_
 :Design by: `Quantmind`_ and `Luca Sbardella`_
@@ -19,6 +20,36 @@ Pulsar Object data mapper
 .. |coverage-dev| image:: https://img.shields.io/coveralls/quantmind/pulsar-odm/dev.svg
   :target: https://coveralls.io/r/quantmind/pulsar-odm?branch=dev
 
+Pulsar-odm is build on top of pulsar_, sqlalchemy_ and greenlet_ libraries to
+provide an implicit asynchronous object data mapper to use with code written
+with asyncio_.
+Currently only one dialect is implemented and tested:
+
+* postgres+green, postgresql dialect with psycopg2_ and greenelt_
+
+Usage
+==========
+
+The engine is created using sqlalchemy api::
+
+    eg = engine('postgresql+green://...')
+
+To be able to use the object data mapper within standard blocking code,
+one need to use pulsar GreenPool_:
+
+.. code:: python
+
+    from pulsar.apps.greenio import GreenPool
+
+    def example():
+        with mapper.begin() as session:
+            task = mapper.task()
+
+    pool = GreenPool()
+
+    yield from pool.submit(example)
+
+
 Testing
 ==========
 
@@ -34,3 +65,9 @@ For testing postgreSQL create a new role::
 .. _`Luca Sbardella`: http://lucasbardella.com
 .. _`Quantmind`: http://quantmind.com
 .. _`google user group`: https://groups.google.com/forum/?fromgroups#!forum/python-pulsar
+.. _pulsar: http://pythonhosted.org/pulsar/
+.. _sqlalchemy: http://www.sqlalchemy.org/
+.. _greenlet: https://greenlet.readthedocs.org/en/latest/
+.. _asyncio: https://docs.python.org/3/library/asyncio.html
+.. _psycopg2: http://pythonhosted.org/psycopg2/
+.. _GreenPool: http://pythonhosted.org/pulsar/apps/greenio.html
