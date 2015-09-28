@@ -3,7 +3,8 @@ import sys
 from setuptools import setup, find_packages
 
 try:
-    import pulsar   # noqa
+    import pulsar.apps.greenio  # noqa
+    import sqlalchemy           # noqa
 except ImportError:
     os.environ['pulsar_odm_setup'] = 'yes'
 
@@ -40,7 +41,7 @@ def run(argv=None):
           long_description=read('README.rst'),
           packages=find_packages(exclude=('tests', 'tests.*')),
           install_requires=requirements(),
-          classifiers=['Development Status :: 2 - Pre-Alpha',
+          classifiers=['Development Status :: 3 - Alpha',
                        'Environment :: Web Environment',
                        'Intended Audience :: Developers',
                        'License :: OSI Approved :: BSD License',
