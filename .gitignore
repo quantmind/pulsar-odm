@@ -2,9 +2,10 @@
 *.log
 *.csv
 
-#eclipse
+#IDEs
 .project
 .pydevproject
+.idea
 
 #coverage
 .coveralls-repo-token
