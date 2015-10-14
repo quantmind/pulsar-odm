@@ -7,6 +7,7 @@ from sqlalchemy import MetaData, Table, event, inspect
 from sqlalchemy.ext.declarative import DeclarativeMeta
 from sqlalchemy.ext.declarative import declarative_base, declared_attr
 from sqlalchemy.orm.session import Session
+from sqlalchemy.orm import object_session
 
 from pulsar import ImproperlyConfigured
 
@@ -200,16 +201,23 @@ class Mapper:
         self._execute_for_all_tables(bind, 'reflect', skip_tables=True)
 
     @contextmanager
-    def begin(self, close=True, expire_on_commit=False, **options):
+    def begin(self, close=True, expire_on_commit=False, session=None,
+              commit=False, **options):
         """Provide a transactional scope around a series of operations.
 
         By default, ``expire_on_commit`` is set to False so that instances
         can be used outside the session.
         """
-        session = self.session(expire_on_commit=expire_on_commit, **options)
+        if not session:
+            commit = True
+            session = self.session(expire_on_commit=expire_on_commit,
+                                   **options)
+        else:
+            close = False
         try:
             yield session
-            session.commit()
+            if commit:
+                session.commit()
         except Exception:
             session.rollback()
             raise
@@ -220,6 +228,12 @@ class Mapper:
     def session(self, **options):
         options['binds'] = self.binds
         return OdmSession(self, **options)
+
+    def session_from_object(self, *objs):
+        for obj in objs:
+            session = object_session(obj)
+            if session is not None:
+                return session
 
     def get_engine(self, key=None):
         '''Get an engine by key
