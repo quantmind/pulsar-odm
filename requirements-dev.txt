@@ -1,4 +1,3 @@
 coverage
 flake8
 psycopg2
--e git+https://github.com/quantmind/pulsar.git@dev#egg=pulsar
