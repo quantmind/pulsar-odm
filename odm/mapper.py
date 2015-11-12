@@ -184,7 +184,7 @@ class Mapper:
         for engine in self.engines():
             tables = self._get_tables(engine)
             if not remove_existing:
-                self.app.logger.info('Create all tables for %s', engine)
+                logger.info('Create all tables for %s', engine)
                 self.metadata.create_all(engine, tables=tables)
             else:
                 pass
