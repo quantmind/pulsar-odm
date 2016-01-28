@@ -183,11 +183,24 @@ class Mapper:
         """
         for engine in self.engines():
             tables = self._get_tables(engine)
+            # take raw sql models out of standard flow
+            raw_sql_models = set()
+            for name, model in self._declarative_register.items():
+                if hasattr(model, '__create_sql__'):
+                    for idx, t in enumerate(tables):
+                        if t.name == name:
+                            tables.pop(idx)
+                            raw_sql_models.add(model)
+                            break
             if not remove_existing:
                 logger.info('Create all tables for %s', engine)
                 self.metadata.create_all(engine, tables=tables)
             else:
                 pass
+            # execute raw sql
+            for model in raw_sql_models:
+                self.app.logger.info('Create raw sql models for %s', engine)
+                engine.execute(model.__create_sql__)
 
     def table_drop(self):
         """Drops all tables.
