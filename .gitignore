@@ -17,5 +17,6 @@ htmlcov
 __pycache__
 pulsar_odm.egg-info
 build
+docs/_build
 dist
 rethinkclear.py
