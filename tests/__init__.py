@@ -1,6 +1,8 @@
 import unittest
 import string
 import inspect
+import asyncio
+
 from uuid import uuid4
 from functools import wraps
 from datetime import datetime
@@ -8,10 +10,13 @@ from datetime import datetime
 import odm
 from odm.types import JSONType, UUIDType
 
-from sqlalchemy import Column, String, Boolean, DateTime
+from sqlalchemy import Column, String, Boolean, DateTime, Integer, ForeignKey
 
 from pulsar.utils.string import random_string
 from pulsar.apps.greenio import GreenPool
+
+
+Model = odm.model_base('foooo')
 
 
 class Task(odm.Model):
@@ -21,6 +26,26 @@ class Task(odm.Model):
     created = Column(DateTime, default=datetime.utcnow)
     info = Column(JSONType)
     info2 = Column(JSONType(binary=False))
+
+
+class Employee(Model):
+    id = Column(Integer, primary_key=True)
+    name = Column(String(80))
+    type = Column(String(50))
+
+    __mapper_args__ = {
+        'polymorphic_identity': 'employee',
+        'polymorphic_on': type
+    }
+
+
+class Engineer(Employee):
+    id = Column(Integer, ForeignKey('employee.id'), primary_key=True)
+    engineer_name = Column(String(30))
+
+    __mapper_args__ = {
+        'polymorphic_identity': 'engineer'
+    }
 
 
 def randomname(prefix):
@@ -47,11 +72,12 @@ def green(method):
 
 class TestCase(unittest.TestCase):
     prefixdb = 'odmtest_'
-    models = (Task,)
+    models = (Task, Employee, Engineer)
     # Tuple of SqlAlchemy models to register
     mapper = None
 
     @classmethod
+    @asyncio.coroutine
     def setUpClass(cls):
         # Create the application
         cls.dbs = {}
@@ -65,6 +91,7 @@ class TestCase(unittest.TestCase):
         yield from cls.green_pool.submit(cls.mapper.table_create)
 
     @classmethod
+    @asyncio.coroutine
     def tearDownClass(cls):
         # Create the application
         if cls.mapper:

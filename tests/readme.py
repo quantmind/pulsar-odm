@@ -26,12 +26,16 @@ def example(mp):
     with mp.begin() as session:
         item = mp.item(subject='my task')
         session.add(item)
-    return task
+    return item
 
 
-if __name__ == '__main__':
+def run():
     pool = GreenPool()
     mp = odm.Mapper('postgresql+green://odm:odmtest@127.0.0.1:5432/odmtests')
     mp.register(Item)
     task = pool._loop.run_until_complete(pool.submit(example, mp))
     print(task)
+
+
+if __name__ == '__main__':
+    run()
