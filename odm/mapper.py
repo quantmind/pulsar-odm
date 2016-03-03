@@ -71,17 +71,6 @@ def table_args(args, **kwargs):
     return args
 
 
-def update_info(cls, info):
-    args = getattr(cls, '__table_args__', {})
-    if 'info' in args:
-        new_info = args['info'].copy()
-        if info:
-            new_info.update(info)
-        return new_info
-    else:
-        return info
-
-
 def model_base(bind_label=None, info=None):
     """Create a base declarative class
     """
@@ -114,7 +103,7 @@ class Mapper:
             binds = {}
         elif isinstance(binds, str):
             binds = {'default': binds}
-        if binds and 'default' not in binds:
+        if 'default' not in binds:
             raise ImproperlyConfigured('default datastore not specified')
 
         self._engines = {}

@@ -70,3 +70,6 @@ class TestUtils(unittest.TestCase):
         self.assertEqual(len(mapper.metadata.tables), 2)
         bla = mapper.metadata.tables['bla']
         self.assertTrue(bla.key, 'bla')
+
+    def test_no_binds(self):
+        self.assertRaises(odm.ImproperlyConfigured, odm.Mapper, None)
