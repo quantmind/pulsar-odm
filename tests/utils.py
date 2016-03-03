@@ -1,5 +1,5 @@
 import unittest
-from inspect import isclass
+from inspect import isclass, getmodule
 
 from sqlalchemy import Column, Integer, String, Table
 
@@ -8,9 +8,19 @@ import odm
 from . import Employee, Engineer
 
 
-class Foo(odm.Model):
+Model = odm.model_base('testutil')
+
+
+class Foo(Model):
     id = Column(Integer, primary_key=True)
     name = Column(String(100))
+
+
+table = Model.create_table(
+    'bla',
+    Column('id', Integer, primary_key=True),
+    Column('name', String),
+)
 
 
 class TestUtils(unittest.TestCase):
@@ -44,3 +54,19 @@ class TestUtils(unittest.TestCase):
         mapper = odm.Mapper('sqlite:///')
         mapper.register(Employee)
         mapper.register(Engineer)
+
+    def test_getitem(self):
+        mapper = odm.Mapper('sqlite:///')
+        model = mapper.register(Employee)
+        self.assertEqual(mapper['employee'], model)
+        self.assertEqual(mapper.employee, model)
+        self.assertRaises(AttributeError, lambda: mapper.foo)
+
+    def test_register_module(self):
+        mapper = odm.Mapper('sqlite:///')
+        mapper.register_module(getmodule(self))
+        self.assertTrue(mapper.foo)
+        self.assertRaises(AttributeError, lambda: mapper.bla)
+        self.assertEqual(len(mapper.metadata.tables), 2)
+        bla = mapper.metadata.tables['bla']
+        self.assertTrue(bla.key, 'bla')
