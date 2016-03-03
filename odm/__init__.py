@@ -14,11 +14,13 @@ if os.environ.get('pulsar_odm_setup') != 'yes':
     from pulsar.utils.version import get_version
 
     from .mapper import (Model, Mapper, OdmSession, logger, model_base,
-                         table_args)
+                         BaseModel, table_args, declared_attr,
+                         ImproperlyConfigured)
     from .strategy import create_engine
     from . import dialects
 
     __version__ = get_version(VERSION)
 
-    __all__ = ['Model', 'Mapper', 'OdmSession', 'logger', 'model_base',
-               'table_args', 'create_engine', 'dialects']
+    __all__ = ['BaseModel', 'Model', 'Mapper', 'OdmSession', 'logger',
+               'model_base', 'table_args', 'create_engine', 'dialects',
+               'declared_attr', 'ImproperlyConfigured']

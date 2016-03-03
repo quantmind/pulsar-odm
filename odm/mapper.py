@@ -1,11 +1,12 @@
 import os
 import logging
 from copy import copy
+from inspect import getmodule
 from contextlib import contextmanager
 
 from sqlalchemy import MetaData, Table, event, inspect
-from sqlalchemy.ext.declarative import DeclarativeMeta
-from sqlalchemy.ext.declarative import declarative_base, declared_attr
+from sqlalchemy.ext.declarative.api import (declarative_base, declared_attr,
+                                            _as_declarative, _add_attribute)
 from sqlalchemy.orm.session import Session
 from sqlalchemy.orm import object_session
 
@@ -17,7 +18,34 @@ from .strategy import create_engine
 logger = logging.getLogger('pulsar.odm')
 
 
-class BaseModel(object):
+class OdmMeta(type):
+
+    def __new__(cls, name, bases, attrs):
+        abstract = attrs.pop('__odm_abstract__', False)
+        klass = super().__new__(cls, name, bases, attrs)
+        if not abstract and not isinstance(klass, DeclarativeMeta):
+            module = getmodule(klass)
+            models = getattr(module, '__odm_models__', None)
+            if models is None:
+                models = []
+                module.__odm_models__ = models
+            models.append(klass)
+        return klass
+
+
+class DeclarativeMeta(OdmMeta):
+
+    def __init__(cls, classname, bases, dict_):
+        if '_decl_class_registry' not in cls.__dict__:
+            _as_declarative(cls, classname, cls.__dict__)
+        type.__init__(cls, classname, bases, dict_)
+
+    def __setattr__(cls, key, value):
+        _add_attribute(cls, key, value)
+
+
+class BaseModel(metaclass=OdmMeta):
+    __odm_abstract__ = True
 
     @declared_attr
     def __tablename__(self):
@@ -25,15 +53,13 @@ class BaseModel(object):
 
     @classmethod
     def create_table(cls, name, *columns, **kwargs):
-        '''Create a new table wuth the same metadata and info
-        '''
-        kwargs = table_args(cls, **kwargs)
-        table = Table(name, cls.metadata, *columns, **kwargs)
+        args = getattr(cls, '__table_args__', {}).copy()
+        kwargs = table_args(args, **kwargs)
+        table = Table(name, MetaData(), *columns, **kwargs)
         return table
 
 
-def table_args(cls, **kwargs):
-    args = getattr(cls, '__table_args__', {}).copy()
+def table_args(args, **kwargs):
 
     for key, value in kwargs.items():
         if key == 'info' and key in args:
@@ -45,24 +71,10 @@ def table_args(cls, **kwargs):
     return args
 
 
-def update_info(cls, info):
-    args = getattr(cls, '__table_args__', {})
-    if 'info' in args:
-        new_info = args['info'].copy()
-        if info:
-            new_info.update(info)
-        return new_info
-    else:
-        return info
-
-
-def model_base(bind_label=None, metadata=None, info=None):
-    '''Create a base declarative class
-    '''
-    if metadata is None:
-        metadata = MetaData()
-
-    Model = declarative_base(metadata=metadata, cls=BaseModel)
+def model_base(bind_label=None, info=None):
+    """Create a base declarative class
+    """
+    Model = type('Model', (BaseModel,), {'__odm_abstract__': True})
     if bind_label:
         args = getattr(Model, '__table_args__', {})
         if 'info' not in args:
@@ -77,26 +89,27 @@ Model = model_base()
 
 
 class Mapper:
-    '''SQLAlchemy wrapper
+    """SQLAlchemy wrapper
 
     .. attribute:: binds
 
         Dictionary of labels-engine pairs. The "default" label is always
         present and it is used for tables without `bind_label` in their
         `info` dictionary.
-    '''
+    """
     def __init__(self, binds):
         # Setup mdoels and engines
         if not binds:
             binds = {}
         elif isinstance(binds, str):
             binds = {'default': binds}
-        if binds and 'default' not in binds:
+        if 'default' not in binds:
             raise ImproperlyConfigured('default datastore not specified')
 
-        self.metadata = MetaData()
         self._engines = {}
         self._declarative_register = {}
+        self._base_declarative = declarative_base(name='OdmBase',
+                                                  metaclass=DeclarativeMeta)
         self.binds = {}
         self.is_green = False
 
@@ -117,33 +130,65 @@ class Mapper:
             return self._declarative_register[name]
         raise AttributeError('No model named "%s"' % name)
 
+    @property
+    def metadata(self):
+        return self._base_declarative.metadata
+
     def copy(self, binds):
         return self.__class__(binds)
 
     def register(self, model):
-        metadata = self.metadata
-        for table in model.metadata.sorted_tables:
-            if table.key not in metadata.tables:
-                engine = None
-                label = table.info.get('bind_label')
-                keys = ('%s.%s' % (label, table.key),
-                        label, None) if label else (None,)
-                for key in keys:
-                    engine = self.get_engine(key)
-                    if engine:
-                        break
-                assert engine
-                table.tometadata(self.metadata)
-                self.binds[table] = engine
+        """Register a model or a table with this mapper
 
-        if (isinstance(model, DeclarativeMeta) and
-                hasattr(model, '__table__')):
+        :param model: a table or a :class:`.BaseModel` class
+        :return: a Model class or a table
+        """
+        metadata = self.metadata
+        if not isinstance(model, Table):
+            model = self._create_model(model)
             table = model.__table__
             self._declarative_register[table.key] = model
+        else:
+            table = model.tometadata(metadata)
+            model = table
+
+        # Register engine
+        engine = None
+        label = table.info.get('bind_label')
+        keys = ('%s.%s' % (label, table.key),
+                label, None) if label else (None,)
+        #
+        # Find the engine for this table
+        for key in keys:
+            engine = self.get_engine(key)
+            if engine:
+                break
+        assert engine
+        self.binds[table] = engine
+
+        return model
+
+    def register_module(self, module, exclude=None):
+        models = getattr(module, '__odm_models__', None)
+        exclude = set(exclude or ())
+        if models:
+            for model in models:
+                if model.__name__.lower() in exclude:
+                    continue
+                self.register(model)
+        for name, table in vars(module).items():
+            if isinstance(table, Table) and table.key not in exclude:
+                self.register(table)
+
+    def create_table(self, name, *columns, **kwargs):
+        """Create a new table with the same metadata and info
+        """
+        kwargs = table_args({}, **kwargs)
+        return Table(name, self.metadata, *columns, **kwargs)
 
     def database_create(self, database, **params):
-        '''Create databases for each engine and return a new :class:`.Mapper`.
-        '''
+        """Create databases for each engine and return a new :class:`.Mapper`.
+        """
         binds = {}
         dbname = database
         for key, engine in self.keys_engines():
@@ -155,8 +200,8 @@ class Mapper:
         return self.copy(binds)
 
     def database_all(self):
-        '''Return a dictionary mapping engines with databases
-        '''
+        """Return a dictionary mapping engines with databases
+        """
         all = {}
         for engine in self.engines():
             all[engine] = self._database_all(engine)
@@ -249,8 +294,8 @@ class Mapper:
                 return session
 
     def get_engine(self, key=None):
-        '''Get an engine by key
-        '''
+        """Get an engine by key
+        """
         if key in self._engines:
             return self._engines[key]
 
@@ -265,6 +310,14 @@ class Mapper:
             engine.dispose()
 
     # INTERNALS
+    def _create_model(self, model):
+        model_name = model.__name__
+        meta = type(self._base_declarative)
+        if isinstance(model, meta):
+            raise ImproperlyConfigured('Cannot register declarative classes '
+                                       'only mixins allowed')
+        return meta(model_name, (model, self._base_declarative), {})
+
     def _get_tables(self, engine):
         tables = []
         for table, eng in self.binds.items():
@@ -277,9 +330,9 @@ class Mapper:
         return all(engine)
 
     def _database_create(self, engine, database):
-        '''Create a new database and return a new url representing
+        """Create a new database and return a new url representing
         a connection to the new database
-        '''
+        """
         logger.info('Creating database "%s" in "%s"', database, engine)
         create = self._get_callable(engine, 'database_create')
         create(engine, database)
@@ -377,8 +430,8 @@ class OdmSession(Session):
 
     @classmethod
     def signal(cls, session, changes, event):
-        '''Signal changes on session
-        '''
+        """Signal changes on session
+        """
         pass
 
     @classmethod

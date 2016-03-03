@@ -1,26 +1,75 @@
 import unittest
 import string
 import inspect
+import asyncio
+from enum import Enum
 from uuid import uuid4
 from functools import wraps
 from datetime import datetime
 
 import odm
-from odm.types import JSONType, UUIDType
+from odm.types import JSONType, UUIDType, ChoiceType
 
-from sqlalchemy import Column, String, Boolean, DateTime
+from sqlalchemy.orm import relationship
+from sqlalchemy import Column, String, Boolean, DateTime, Integer, ForeignKey
 
 from pulsar.utils.string import random_string
 from pulsar.apps.greenio import GreenPool
 
 
-class Task(odm.Model):
+Model = odm.model_base('foooo')
+
+
+class TaskType(Enum):
+    work = 1
+    personal = 2
+    social = 3
+
+
+class Employee(Model):
+    id = Column(Integer, primary_key=True)
+    name = Column(String(80))
+    type = Column(String(50))
+
+    @odm.declared_attr
+    def __mapper_args__(cls):
+        name = cls.__name__.lower()
+        if cls.__name__ == 'Employee':
+            return {
+                'polymorphic_identity': name,
+                'polymorphic_on': cls.type
+            }
+        else:
+            return {
+                'polymorphic_identity': name
+            }
+
+
+class Engineer(Employee):
+    engineer_name = Column(String(30))
+
+    @odm.declared_attr
+    def id(self):
+        return Column(Integer, ForeignKey('employee.id'), primary_key=True)
+
+
+class Task(Model):
     id = Column(UUIDType, primary_key=True)
     subject = Column(String(250))
     done = Column(Boolean, default=False)
     created = Column(DateTime, default=datetime.utcnow)
     info = Column(JSONType)
     info2 = Column(JSONType(binary=False))
+    type = Column(ChoiceType(TaskType, impl=Integer),
+                  default=TaskType.work)
+
+    @odm.declared_attr
+    def employee_id(cls):
+        return Column(Integer, ForeignKey('employee.id'))
+
+    @odm.declared_attr
+    def employee(cls):
+        return relationship('Employee', backref='tasks')
 
 
 def randomname(prefix):
@@ -47,11 +96,12 @@ def green(method):
 
 class TestCase(unittest.TestCase):
     prefixdb = 'odmtest_'
-    models = (Task,)
+    models = (Task, Employee, Engineer)
     # Tuple of SqlAlchemy models to register
     mapper = None
 
     @classmethod
+    @asyncio.coroutine
     def setUpClass(cls):
         # Create the application
         cls.dbs = {}
@@ -65,6 +115,7 @@ class TestCase(unittest.TestCase):
         yield from cls.green_pool.submit(cls.mapper.table_create)
 
     @classmethod
+    @asyncio.coroutine
     def tearDownClass(cls):
         # Create the application
         if cls.mapper:
@@ -89,9 +140,15 @@ class MapperMixin:
     def test_create_task(self):
         with self.mapper.begin() as session:
             task = self.mapper.task(id=uuid4(),
-                                    subject='simple task')
+                                    subject='simple task',
+                                    type=TaskType.personal)
             session.add(task)
         self.assertTrue(task.id)
+        self.assertEqual(task.type, TaskType.personal)
+
+        with self.mapper.begin() as session:
+            task = session.query(self.mapper.task).get(task.id)
+            self.assertEqual(task.type, TaskType.personal)
 
     def test_update_task(self):
         with self.mapper.begin() as session:
@@ -111,3 +168,21 @@ class MapperMixin:
 
         self.assertTrue(task.done)
         self.assertEqual(task.info['extra'], 'extra info')
+
+    def test_task_employee(self):
+        mapper = self.mapper
+
+        with mapper.begin() as session:
+            user = mapper.employee(name='pippo')
+            session.add(user)
+
+        with mapper.begin() as session:
+            task = mapper.task(id=uuid4(),
+                               employee_id=user.id,
+                               subject='simple task to update')
+            session.add(task)
+
+        with mapper.begin() as session:
+            user = session.query(mapper.employee).get(user.id)
+            tasks = user.tasks
+            self.assertTrue(tasks)

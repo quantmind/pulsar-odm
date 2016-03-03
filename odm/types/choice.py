@@ -1,3 +1,4 @@
+from inspect import isclass
 from enum import Enum
 
 from sqlalchemy import types
@@ -48,6 +49,8 @@ class ChoiceType(types.TypeDecorator, ScalarCoercible):
             self.type_impl = ChoiceTypeImpl(choices=choices, **kwargs)
 
         if impl:
+            if isclass(impl):
+                impl = impl()
             self.impl = impl
 
     @property
