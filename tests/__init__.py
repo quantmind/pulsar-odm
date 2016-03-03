@@ -2,13 +2,13 @@ import unittest
 import string
 import inspect
 import asyncio
-
+from enum import Enum
 from uuid import uuid4
 from functools import wraps
 from datetime import datetime
 
 import odm
-from odm.types import JSONType, UUIDType
+from odm.types import JSONType, UUIDType, ChoiceType
 
 from sqlalchemy.orm import relationship
 from sqlalchemy import Column, String, Boolean, DateTime, Integer, ForeignKey
@@ -18,6 +18,12 @@ from pulsar.apps.greenio import GreenPool
 
 
 Model = odm.model_base('foooo')
+
+
+class TaskType(Enum):
+    work = 1
+    personal = 2
+    social = 3
 
 
 class Employee(Model):
@@ -54,6 +60,8 @@ class Task(Model):
     created = Column(DateTime, default=datetime.utcnow)
     info = Column(JSONType)
     info2 = Column(JSONType(binary=False))
+    type = Column(ChoiceType(TaskType, impl=Integer),
+                  default=TaskType.work)
 
     @odm.declared_attr
     def employee_id(cls):
@@ -132,9 +140,15 @@ class MapperMixin:
     def test_create_task(self):
         with self.mapper.begin() as session:
             task = self.mapper.task(id=uuid4(),
-                                    subject='simple task')
+                                    subject='simple task',
+                                    type=TaskType.personal)
             session.add(task)
         self.assertTrue(task.id)
+        self.assertEqual(task.type, TaskType.personal)
+
+        with self.mapper.begin() as session:
+            task = session.query(self.mapper.task).get(task.id)
+            self.assertEqual(task.type, TaskType.personal)
 
     def test_update_task(self):
         with self.mapper.begin() as session:
