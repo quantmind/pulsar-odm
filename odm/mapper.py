@@ -1,12 +1,14 @@
 import os
 import logging
 from copy import copy
+from inspect import getmodule
 from contextlib import contextmanager
 
 from sqlalchemy import MetaData, Table, event, inspect
-from sqlalchemy.ext.declarative import declarative_base, declared_attr
+from sqlalchemy.ext.declarative.api import (declarative_base, declared_attr,
+                                            _as_declarative, _add_attribute)
 from sqlalchemy.orm.session import Session
-from sqlalchemy.orm import object_session, mapper
+from sqlalchemy.orm import object_session
 
 from pulsar import ImproperlyConfigured
 
@@ -16,15 +18,48 @@ from .strategy import create_engine
 logger = logging.getLogger('pulsar.odm')
 
 
-class BaseModel(object):
+class OdmMeta(type):
+
+    def __new__(cls, name, bases, attrs):
+        abstract = attrs.pop('__odm_abstract__', False)
+        klass = super().__new__(cls, name, bases, attrs)
+        if not abstract and not isinstance(klass, DeclarativeMeta):
+            module = getmodule(klass)
+            models = getattr(module, '__odm_models__', None)
+            if models is None:
+                models = []
+                module.__odm_models__ = models
+            models.append(klass)
+        return klass
+
+
+class DeclarativeMeta(OdmMeta):
+
+    def __init__(cls, classname, bases, dict_):
+        if '_decl_class_registry' not in cls.__dict__:
+            _as_declarative(cls, classname, cls.__dict__)
+        type.__init__(cls, classname, bases, dict_)
+
+    def __setattr__(cls, key, value):
+        _add_attribute(cls, key, value)
+
+
+class BaseModel(metaclass=OdmMeta):
+    __odm_abstract__ = True
 
     @declared_attr
     def __tablename__(self):
         return self.__name__.lower()
 
+    @classmethod
+    def create_table(cls, name, *columns, **kwargs):
+        args = getattr(cls, '__table_args__', {}).copy()
+        kwargs = table_args(args, **kwargs)
+        table = Table(name, MetaData(), *columns, **kwargs)
+        return table
+
 
 def table_args(args, **kwargs):
-    # args = getattr(cls, '__table_args__', {}).copy()
 
     for key, value in kwargs.items():
         if key == 'info' and key in args:
@@ -50,7 +85,7 @@ def update_info(cls, info):
 def model_base(bind_label=None, info=None):
     """Create a base declarative class
     """
-    Model = type('Model', (BaseModel,), {})
+    Model = type('Model', (BaseModel,), {'__odm_abstract__': True})
     if bind_label:
         args = getattr(Model, '__table_args__', {})
         if 'info' not in args:
@@ -82,11 +117,10 @@ class Mapper:
         if binds and 'default' not in binds:
             raise ImproperlyConfigured('default datastore not specified')
 
-        self.metadata = MetaData()
         self._engines = {}
         self._declarative_register = {}
         self._base_declarative = declarative_base(name='OdmBase',
-                                                  metadata=self.metadata)
+                                                  metaclass=DeclarativeMeta)
         self.binds = {}
         self.is_green = False
 
@@ -107,25 +141,27 @@ class Mapper:
             return self._declarative_register[name]
         raise AttributeError('No model named "%s"' % name)
 
+    @property
+    def metadata(self):
+        return self._base_declarative.metadata
+
     def copy(self, binds):
         return self.__class__(binds)
 
-    def register(self, model, table=None):
-        """Register a model with this mapper
+    def register(self, model):
+        """Register a model or a table with this mapper
 
         :param model: a table or a :class:`.BaseModel` class
-        :return: a Model class
+        :return: a Model class or a table
         """
         metadata = self.metadata
-        if not table:
+        if not isinstance(model, Table):
             model = self._create_model(model)
             table = model.__table__
+            self._declarative_register[table.key] = model
         else:
             table = model.tometadata(metadata)
-            mp = mapper(model, table)
-            model = mp.class_
-
-        self._declarative_register[table.key] = model
+            model = table
 
         # Register engine
         engine = None
@@ -142,6 +178,18 @@ class Mapper:
         self.binds[table] = engine
 
         return model
+
+    def register_module(self, module, exclude=None):
+        models = getattr(module, '__odm_models__', None)
+        exclude = set(exclude or ())
+        if models:
+            for model in models:
+                if model.__name__.lower() in exclude:
+                    continue
+                self.register(model)
+        for name, table in vars(module).items():
+            if isinstance(table, Table) and table.key not in exclude:
+                self.register(table)
 
     def create_table(self, name, *columns, **kwargs):
         """Create a new table with the same metadata and info
@@ -276,6 +324,9 @@ class Mapper:
     def _create_model(self, model):
         model_name = model.__name__
         meta = type(self._base_declarative)
+        if isinstance(model, meta):
+            raise ImproperlyConfigured('Cannot register declarative classes '
+                                       'only mixins allowed')
         return meta(model_name, (model, self._base_declarative), {})
 
     def _get_tables(self, engine):
