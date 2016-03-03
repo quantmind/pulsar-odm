@@ -10,6 +10,7 @@ from datetime import datetime
 import odm
 from odm.types import JSONType, UUIDType
 
+from sqlalchemy.orm import relationship
 from sqlalchemy import Column, String, Boolean, DateTime, Integer, ForeignKey
 
 from pulsar.utils.string import random_string
@@ -19,7 +20,34 @@ from pulsar.apps.greenio import GreenPool
 Model = odm.model_base('foooo')
 
 
-class Task(odm.Model):
+class Employee(Model):
+    id = Column(Integer, primary_key=True)
+    name = Column(String(80))
+    type = Column(String(50))
+
+    @odm.declared_attr
+    def __mapper_args__(cls):
+        name = cls.__name__.lower()
+        if cls.__name__ == 'Employee':
+            return {
+                'polymorphic_identity': name,
+                'polymorphic_on': cls.type
+            }
+        else:
+            return {
+                'polymorphic_identity': name
+            }
+
+
+class Engineer(Employee):
+    engineer_name = Column(String(30))
+
+    @odm.declared_attr
+    def id(self):
+        return Column(Integer, ForeignKey('employee.id'), primary_key=True)
+
+
+class Task(Model):
     id = Column(UUIDType, primary_key=True)
     subject = Column(String(250))
     done = Column(Boolean, default=False)
@@ -27,25 +55,13 @@ class Task(odm.Model):
     info = Column(JSONType)
     info2 = Column(JSONType(binary=False))
 
+    @odm.declared_attr
+    def employee_id(cls):
+        return Column(Integer, ForeignKey('employee.id'))
 
-class Employee(Model):
-    id = Column(Integer, primary_key=True)
-    name = Column(String(80))
-    type = Column(String(50))
-
-    __mapper_args__ = {
-        'polymorphic_identity': 'employee',
-        'polymorphic_on': type
-    }
-
-
-class Engineer(Employee):
-    id = Column(Integer, ForeignKey('employee.id'), primary_key=True)
-    engineer_name = Column(String(30))
-
-    __mapper_args__ = {
-        'polymorphic_identity': 'engineer'
-    }
+    @odm.declared_attr
+    def employee(cls):
+        return relationship('Employee', backref='tasks')
 
 
 def randomname(prefix):
@@ -138,3 +154,21 @@ class MapperMixin:
 
         self.assertTrue(task.done)
         self.assertEqual(task.info['extra'], 'extra info')
+
+    def test_task_employee(self):
+        mapper = self.mapper
+
+        with mapper.begin() as session:
+            user = mapper.employee(name='pippo')
+            session.add(user)
+
+        with mapper.begin() as session:
+            task = mapper.task(id=uuid4(),
+                               employee_id=user.id,
+                               subject='simple task to update')
+            session.add(task)
+
+        with mapper.begin() as session:
+            user = session.query(mapper.employee).get(user.id)
+            tasks = user.tasks
+            self.assertTrue(tasks)

@@ -1,14 +1,12 @@
 import os
 import logging
-import weakref
 from copy import copy
 from contextlib import contextmanager
 
 from sqlalchemy import MetaData, Table, event, inspect
-from sqlalchemy.ext.declarative import DeclarativeMeta
 from sqlalchemy.ext.declarative import declarative_base, declared_attr
 from sqlalchemy.orm.session import Session
-from sqlalchemy.orm import object_session
+from sqlalchemy.orm import object_session, mapper
 
 from pulsar import ImproperlyConfigured
 
@@ -24,17 +22,9 @@ class BaseModel(object):
     def __tablename__(self):
         return self.__name__.lower()
 
-    @classmethod
-    def create_table(cls, name, *columns, **kwargs):
-        """Create a new table wuth the same metadata and info
-        """
-        kwargs = table_args(cls, **kwargs)
-        table = Table(name, cls.metadata, *columns, **kwargs)
-        return table
 
-
-def table_args(cls, **kwargs):
-    args = getattr(cls, '__table_args__', {}).copy()
+def table_args(args, **kwargs):
+    # args = getattr(cls, '__table_args__', {}).copy()
 
     for key, value in kwargs.items():
         if key == 'info' and key in args:
@@ -57,13 +47,10 @@ def update_info(cls, info):
         return info
 
 
-def model_base(bind_label=None, metadata=None, info=None):
+def model_base(bind_label=None, info=None):
     """Create a base declarative class
     """
-    if metadata is None:
-        metadata = MetaData()
-
-    Model = declarative_base(metadata=metadata, cls=BaseModel)
+    Model = type('Model', (BaseModel,), {})
     if bind_label:
         args = getattr(Model, '__table_args__', {})
         if 'info' not in args:
@@ -98,11 +85,8 @@ class Mapper:
         self.metadata = MetaData()
         self._engines = {}
         self._declarative_register = {}
-        self._base_declarative = type(
-            'OdmBase', (object,),
-            {'metadata': self.metadata,
-             '_sa_class_manager': None,
-             '_decl_class_registry': weakref.WeakValueDictionary()})
+        self._base_declarative = declarative_base(name='OdmBase',
+                                                  metadata=self.metadata)
         self.binds = {}
         self.is_green = False
 
@@ -126,59 +110,44 @@ class Mapper:
     def copy(self, binds):
         return self.__class__(binds)
 
-    def register(self, model):
+    def register(self, model, table=None):
         """Register a model with this mapper
-        :param model: a table or a declarative class
-        :return: the model
+
+        :param model: a table or a :class:`.BaseModel` class
+        :return: a Model class
         """
         metadata = self.metadata
-        for table in model.metadata.tables.values():
-            if table.key not in metadata.tables:
-                engine = None
-                label = table.info.get('bind_label')
-                keys = ('%s.%s' % (label, table.key),
-                        label, None) if label else (None,)
-                #
-                # Find the engine for this table
-                for key in keys:
-                    engine = self.get_engine(key)
-                    if engine:
-                        break
-                assert engine
-                table = table.tometadata(self.metadata)
-                self.binds[table] = engine
+        if not table:
+            model = self._create_model(model)
+            table = model.__table__
+        else:
+            table = model.tometadata(metadata)
+            mp = mapper(model, table)
+            model = mp.class_
 
-        # If the model is declarative, add it to this mapper
-        # declarative register
-        if (isinstance(model, DeclarativeMeta) and
-                hasattr(model, '__table__')):
-            meta = model.__class__
-            original_mapper = model.__mapper__
-            table = self.metadata.tables[model.__table__.key]
-            di = {'__table__': table,
-                  '__mapper_args__': {'concrete': True}}
-            #
-            # Create the new model by inheriting
-            model_name = model.__name__
-            model = meta(model_name, (self._base_declarative, model,), di)
-            mapper = model.__mapper__
-            base_mapper = mapper
-            #
-            # Polymorphic model
-            if original_mapper.base_mapper != original_mapper:
-                base_name = base_mapper.base_mapper.class_.__name__
-                name = base_name.lower()
-                if name in self._declarative_register:
-                    base_model = self._declarative_register[name]
-                    base_mapper = base_model.__mapper__
-                else:
-                    raise ImproperlyConfigured('Cannot register "%s". No base '
-                                               'model "%s" registered' %
-                                               model_name, base_name)
+        self._declarative_register[table.key] = model
 
-            mapper.base_mapper = base_mapper
-            self._declarative_register[table.key] = model
+        # Register engine
+        engine = None
+        label = table.info.get('bind_label')
+        keys = ('%s.%s' % (label, table.key),
+                label, None) if label else (None,)
+        #
+        # Find the engine for this table
+        for key in keys:
+            engine = self.get_engine(key)
+            if engine:
+                break
+        assert engine
+        self.binds[table] = engine
+
         return model
+
+    def create_table(self, name, *columns, **kwargs):
+        """Create a new table with the same metadata and info
+        """
+        kwargs = table_args({}, **kwargs)
+        return Table(name, self.metadata, *columns, **kwargs)
 
     def database_create(self, database, **params):
         """Create databases for each engine and return a new :class:`.Mapper`.
@@ -304,6 +273,11 @@ class Mapper:
             engine.dispose()
 
     # INTERNALS
+    def _create_model(self, model):
+        model_name = model.__name__
+        meta = type(self._base_declarative)
+        return meta(model_name, (model, self._base_declarative), {})
+
     def _get_tables(self, engine):
         tables = []
         for table, eng in self.binds.items():
