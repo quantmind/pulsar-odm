@@ -30,6 +30,7 @@ class Employee(Model):
     id = Column(Integer, primary_key=True)
     name = Column(String(80))
     type = Column(String(50))
+    sex = Column(ChoiceType({'female': 'female', 'male': 'male'}))
 
     @odm.declared_attr
     def __mapper_args__(cls):
@@ -137,6 +138,20 @@ class MapperMixin:
         mapper = self.mapper
         self.assertTrue(mapper.binds)
 
+    def test_databases(self):
+        dbs = self.mapper.database_all()
+        self.assertIsInstance(dbs, dict)
+
+    def test_tables(self):
+        tables = self.mapper.tables()
+        self.assertTrue(tables)
+        self.assertEqual(len(tables[0][1]), 3)
+
+    def test_database_drop_fail(self):
+        self.assertRaises(AssertionError,
+                          self.mapper.database_drop,
+                          lambda e: None)
+
     def test_create_task(self):
         with self.mapper.begin() as session:
             task = self.mapper.task(id=uuid4(),
@@ -173,7 +188,7 @@ class MapperMixin:
         mapper = self.mapper
 
         with mapper.begin() as session:
-            user = mapper.employee(name='pippo')
+            user = mapper.employee(name='pippo', sex='male')
             session.add(user)
 
         with mapper.begin() as session:
@@ -186,3 +201,4 @@ class MapperMixin:
             user = session.query(mapper.employee).get(user.id)
             tasks = user.tasks
             self.assertTrue(tasks)
+            self.assertEqual(user.sex, 'male')
