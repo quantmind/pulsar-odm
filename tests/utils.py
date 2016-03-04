@@ -73,3 +73,12 @@ class TestUtils(unittest.TestCase):
 
     def test_no_binds(self):
         self.assertRaises(odm.ImproperlyConfigured, odm.Mapper, None)
+
+    def test_copy_modules(self):
+        module = getmodule(self)
+        models = odm.get_models(module)
+        odm.copy_models(module, __name__)
+        new_models = odm.get_models(module)
+        self.assertIsInstance(new_models.pop('bla'), Table)
+        self.assertTrue(new_models)
+        self.assertNotEqual(id(models), id(new_models))

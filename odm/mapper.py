@@ -1,8 +1,10 @@
 import os
 import logging
+import sys
 from copy import copy
 from inspect import getmodule
 from contextlib import contextmanager
+from collections import OrderedDict
 
 from sqlalchemy import MetaData, Table, event, inspect
 from sqlalchemy.ext.declarative.api import (declarative_base, declared_attr,
@@ -27,9 +29,10 @@ class OdmMeta(type):
             module = getmodule(klass)
             models = getattr(module, '__odm_models__', None)
             if models is None:
-                models = []
+                models = OrderedDict()
                 module.__odm_models__ = models
-            models.append(klass)
+            name = klass.__name__.lower()
+            models[name] = klass
         return klass
 
 
@@ -83,6 +86,41 @@ def model_base(bind_label=None, info=None):
         Model.__table_args__ = args
 
     return Model
+
+
+def module_tables(module):
+    for name, table in vars(module).items():
+        if isinstance(table, Table):
+            yield table
+
+
+def copy_models(module_from, module_to):
+    """Copy models from one module to another
+    :param module_from:
+    :param module_to:
+    :return:
+    """
+    module_from = get_module(module_from)
+    module_to = get_module(module_to)
+    models = get_models(module_from) or OrderedDict()
+    models = models.copy()
+    models.update(((t.key, t) for t in module_tables(module_from)))
+    module_to.__odm_models__ = models
+
+
+def get_module(module_or_name):
+    if isinstance(module_or_name, str):
+        return sys.modules[module_or_name]
+    else:
+        return getmodule(module_or_name)
+
+
+def get_models(module):
+    """Get models from a module
+    :param module:
+    :return:
+    """
+    return getattr(module, '__odm_models__', None)
 
 
 Model = model_base()
@@ -169,15 +207,15 @@ class Mapper:
         return model
 
     def register_module(self, module, exclude=None):
-        models = getattr(module, '__odm_models__', None)
+        models = get_models(module)
         exclude = set(exclude or ())
         if models:
-            for model in models:
-                if model.__name__.lower() in exclude:
+            for name, model in models.items():
+                if name in exclude:
                     continue
                 self.register(model)
-        for name, table in vars(module).items():
-            if isinstance(table, Table) and table.key not in exclude:
+        for table in module_tables(module):
+            if table.key not in exclude:
                 self.register(table)
 
     def create_table(self, name, *columns, **kwargs):
@@ -252,11 +290,6 @@ class Mapper:
         """
         for engine in self.engines():
             self.metadata.drop_all(engine, tables=self._get_tables(engine))
-
-    def reflect(self, bind='__all__'):
-        """Reflects tables from the database.
-        """
-        self._execute_for_all_tables(bind, 'reflect', skip_tables=True)
 
     @contextmanager
     def begin(self, close=True, expire_on_commit=False, session=None,
