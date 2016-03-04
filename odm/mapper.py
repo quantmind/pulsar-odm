@@ -11,6 +11,7 @@ from sqlalchemy.ext.declarative.api import (declarative_base, declared_attr,
                                             _as_declarative, _add_attribute)
 from sqlalchemy.orm.session import Session
 from sqlalchemy.orm import object_session
+from sqlalchemy.schema import DDL
 
 from pulsar import ImproperlyConfigured
 
@@ -120,7 +121,7 @@ def get_models(module):
     :param module:
     :return:
     """
-    return getattr(module, '__odm_models__', None)
+    return getattr(get_module(module), '__odm_models__', None)
 
 
 Model = model_base()
@@ -207,6 +208,7 @@ class Mapper:
         return model
 
     def register_module(self, module, exclude=None):
+        module = get_module(module)
         models = get_models(module)
         exclude = set(exclude or ())
         if models:
@@ -265,31 +267,17 @@ class Mapper:
         """Creates all tables.
         """
         for engine in self.engines():
-            tables = self._get_tables(engine)
-            # take raw sql models out of standard flow
-            raw_sql_models = set()
-            for name, model in self._declarative_register.items():
-                if hasattr(model, '__create_sql__'):
-                    for idx, t in enumerate(tables):
-                        if t.name == name:
-                            tables.pop(idx)
-                            raw_sql_models.add(model)
-                            break
-            if not remove_existing:
-                logger.info('Create all tables for %s', engine)
-                self.metadata.create_all(engine, tables=tables)
-            else:
-                pass
-            # execute raw sql
-            for model in raw_sql_models:
-                self.app.logger.info('Create raw sql models for %s', engine)
-                engine.execute(model.__create_sql__)
+            tables = self._get_tables(engine, create_drop=True)
+            logger.info('Create all tables for %s', engine)
+            self.metadata.create_all(engine, tables=tables)
 
     def table_drop(self):
         """Drops all tables.
         """
         for engine in self.engines():
-            self.metadata.drop_all(engine, tables=self._get_tables(engine))
+            tables = self._get_tables(engine, create_drop=True)
+            logger.info('Drop all tables for %s', engine)
+            self.metadata.drop_all(engine, tables=tables)
 
     @contextmanager
     def begin(self, close=True, expire_on_commit=False, session=None,
@@ -349,12 +337,31 @@ class Mapper:
         if isinstance(model, meta):
             raise ImproperlyConfigured('Cannot register declarative classes '
                                        'only mixins allowed')
-        return meta(model_name, (model, self._base_declarative), {})
+        model = meta(model_name, (model, self._base_declarative), {})
+        create = getattr(model, '__create_sql__', None)
+        if create:
+            name = model_name.lower()
+            event.listen(self.metadata,
+                         'after_create',
+                         DDL(create.format({'name': name})))
+            drop = getattr(model, '__drop_sql__', None)
+            if not drop:
+                logger.warning('Model %s has create statement but not drop. '
+                               'To mute this warning add a __drop_sql__ '
+                               'statement in the model class', name)
+            else:
+                event.listen(self.metadata,
+                             'before_drop',
+                             DDL(drop.format({'name': name})))
+        return model
 
-    def _get_tables(self, engine):
+    def _get_tables(self, engine, create_drop=False):
         tables = []
         for table, eng in self.binds.items():
             if eng == engine:
+                model = self[table.key]
+                if create_drop and hasattr(model, '__create_sql__'):
+                    continue
                 tables.append(table)
         return tables
 

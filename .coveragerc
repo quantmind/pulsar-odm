@@ -1,5 +1,6 @@
 [run]
 source = odm
+concurrency = greenlet
 
 [report]
 # Regexes for lines to exclude from consideration

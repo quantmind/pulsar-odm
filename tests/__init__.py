@@ -26,6 +26,40 @@ class TaskType(Enum):
     social = 3
 
 
+class PersonalTasks(Model):
+    id = Column(UUIDType, primary_key=True)
+    subject = Column(String(250))
+    done = Column(Boolean, default=False)
+    created = Column(DateTime, default=datetime.utcnow)
+
+    __create_sql__ = """
+    create or replace view {0[name]} as (
+    with
+        -- QUERY
+        _tasks as (
+            select *
+            from task
+            where type = 2
+        ),
+
+        _personal_view as (
+          select
+            t.id,
+            t.subject,
+            t.done,
+            t.created
+          from _tasks t
+        )
+
+        select * from _personal_view ps
+    )
+    """
+
+    __drop_sql__ = """
+    drop view {0[name]}
+    """
+
+
 class Employee(Model):
     id = Column(Integer, primary_key=True)
     name = Column(String(80))
@@ -97,7 +131,6 @@ def green(method):
 
 class TestCase(unittest.TestCase):
     prefixdb = 'odmtest_'
-    models = (Task, Employee, Engineer)
     # Tuple of SqlAlchemy models to register
     mapper = None
 
@@ -111,8 +144,7 @@ class TestCase(unittest.TestCase):
         cls.green_pool = GreenPool()
         cls.mapper = yield from cls.green_pool.submit(
             cls.init_mapper.database_create, cls.dbname)
-        for model in cls.models:
-            cls.mapper.register(model)
+        cls.mapper.register_module(__name__)
         yield from cls.green_pool.submit(cls.mapper.table_create)
 
     @classmethod
@@ -202,3 +234,21 @@ class MapperMixin:
             tasks = user.tasks
             self.assertTrue(tasks)
             self.assertEqual(user.sex, 'male')
+
+    def test_view(self):
+        mapper = self.mapper
+
+        with mapper.begin() as session:
+            session.add(mapper.task(id=uuid4(),
+                                    subject='simple task 1',
+                                    type=TaskType.personal))
+            session.add(mapper.task(id=uuid4(),
+                                    subject='simple task 2',
+                                    type=TaskType.personal))
+            session.add(mapper.task(id=uuid4(),
+                                    subject='simple task 3',
+                                    type=TaskType.work))
+
+        with mapper.begin() as session:
+            ptasks = session.query(mapper.personaltasks).all()
+            self.assertTrue(len(ptasks) >= 2)
