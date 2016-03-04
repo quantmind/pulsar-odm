@@ -314,6 +314,11 @@ class Mapper:
             if session is not None:
                 return session
 
+    def dialect(self, key):
+        """Dialect object for a model/table name
+        """
+        return self.binds[self[key].__table__].dialect
+
     def get_engine(self, key=None):
         """Get an engine by key
         """
@@ -321,6 +326,8 @@ class Mapper:
             return self._engines[key]
 
     def engines(self):
+        """Iterator over all engines
+        """
         return self._engines.values()
 
     def keys_engines(self):

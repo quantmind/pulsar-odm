@@ -18,3 +18,7 @@ class PostgreSqlTests(tests.TestCase, tests.MapperMixin):
             self.assertIsInstance(engine.pool, GreenletPool)
             self.assertEqual(engine.pool.max_size(), 7)
             self.assertEqual(engine.pool.timeout(), 15)
+
+    def test_dialect(self):
+        dialect = self.mapper.dialect('task')
+        self.assertEqual(dialect.name, 'postgresql')
