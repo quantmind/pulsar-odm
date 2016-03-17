@@ -2,7 +2,7 @@
 import os
 
 
-VERSION = (0, 4, 0, 'alpha', 0)
+VERSION = (0, 4, 0, 'final', 0)
 
 __version__ = '.'.join((str(v) for v in VERSION[:3]))
 __author__ = "Luca Sbardella"
@@ -15,7 +15,7 @@ if os.environ.get('pulsar_odm_setup') != 'yes':
 
     from .mapper import (Model, Mapper, OdmSession, logger, model_base,
                          BaseModel, table_args, declared_attr, copy_models,
-                         get_models, ImproperlyConfigured)
+                         move_models, get_models, ImproperlyConfigured)
     from .strategy import create_engine
     from . import dialects
 
@@ -23,5 +23,5 @@ if os.environ.get('pulsar_odm_setup') != 'yes':
 
     __all__ = ['BaseModel', 'Model', 'Mapper', 'OdmSession', 'logger',
                'model_base', 'table_args', 'create_engine', 'dialects',
-               'declared_attr', 'copy_models', 'get_models',
+               'declared_attr', 'copy_models', 'move_models', 'get_models',
                'ImproperlyConfigured']

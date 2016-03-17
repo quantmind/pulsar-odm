@@ -8,7 +8,7 @@ Pulsar Object data mapper
 :Mailing list: `google user group`_
 :Design by: `Quantmind`_ and `Luca Sbardella`_
 :Platforms: Linux, OSX, Windows. Python 3.4 and above
-:Keywords: sql, redis, sqlalchemy, asynchronous, concurrency, thread
+:Keywords: sql, sqlalchemy, asynchronous, concurrency, greenlet
 
 
 .. |master-build| image:: https://travis-ci.org/quantmind/pulsar-odm.svg?branch=master

@@ -41,7 +41,7 @@ def run(argv=None):
           long_description=read('README.rst'),
           packages=find_packages(exclude=('tests', 'tests.*')),
           install_requires=requirements(),
-          classifiers=['Development Status :: 3 - Alpha',
+          classifiers=['Development Status :: 4 - Beta',
                        'Environment :: Web Environment',
                        'Intended Audience :: Developers',
                        'License :: OSI Approved :: BSD License',

@@ -11,6 +11,7 @@
 .coveralls-repo-token
 .coverage
 htmlcov
+release-notes.md
 
 #python
 *.pyc

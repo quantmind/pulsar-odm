@@ -57,13 +57,17 @@ class BaseModel(metaclass=OdmMeta):
 
     @classmethod
     def create_table(cls, name, *columns, **kwargs):
-        args = getattr(cls, '__table_args__', {}).copy()
-        kwargs = table_args(args, **kwargs)
+        kwargs = table_args(cls, **kwargs)
         table = Table(name, MetaData(), *columns, **kwargs)
         return table
 
 
 def table_args(args, **kwargs):
+    if hasattr(args, '__table_args__'):
+        args = args.__table_args__
+        if isinstance(args, tuple):
+            args = args[-1]
+        args = args.copy()
 
     for key, value in kwargs.items():
         if key == 'info' and key in args:
@@ -103,10 +107,18 @@ def copy_models(module_from, module_to):
     """
     module_from = get_module(module_from)
     module_to = get_module(module_to)
-    models = get_models(module_from) or OrderedDict()
-    models = models.copy()
-    models.update(((t.key, t) for t in module_tables(module_from)))
-    module_to.__odm_models__ = models
+    models = get_models(module_from)
+    if models:
+        models = models.copy()
+        models.update(((t.key, t) for t in module_tables(module_from)))
+        module_to.__odm_models__ = models
+        return models
+
+
+def move_models(module_from, module_to):
+    module_from = get_module(module_from)
+    if copy_models(module_from, module_to):
+        del module_from.__odm_models__
 
 
 def get_module(module_or_name):
@@ -147,6 +159,7 @@ class Mapper:
 
         self._engines = {}
         self._declarative_register = {}
+        self._bases = {}
         self._base_declarative = declarative_base(name='OdmBase',
                                                   metaclass=DeclarativeMeta)
         self.binds = {}
@@ -171,6 +184,8 @@ class Mapper:
 
     @property
     def metadata(self):
+        """Returns the :class:`~sqlalchemy.Metadata` for this mapper
+        """
         return self._base_declarative.metadata
 
     def copy(self, binds):
@@ -184,9 +199,16 @@ class Mapper:
         """
         metadata = self.metadata
         if not isinstance(model, Table):
-            model = self._create_model(model)
+            model_name = self._create_model(model)
+            if not model_name:
+                return
+            model, name = model_name
             table = model.__table__
-            self._declarative_register[table.key] = model
+            self._declarative_register[name] = model
+
+            if name in self._bases:
+                for model in self._bases.pop(name):
+                    self.register(model)
         else:
             table = model.tometadata(metadata)
             model = table
@@ -344,10 +366,22 @@ class Mapper:
         if isinstance(model, meta):
             raise ImproperlyConfigured('Cannot register declarative classes '
                                        'only mixins allowed')
-        model = meta(model_name, (model, self._base_declarative), {})
+        base = getattr(model, '__inherit_from__', None)
+        if base:
+            if base not in self._declarative_register:
+                models = self._bases.get(base)
+                if not models:
+                    self._bases[base] = models = []
+                models.append(model)
+                return
+            else:
+                base = self._declarative_register[base]
+        else:
+            base = self._base_declarative
+        model = meta(model_name, (model, base), {})
         create = getattr(model, '__create_sql__', None)
+        name = model_name.lower()
         if create:
-            name = model_name.lower()
             event.listen(self.metadata,
                          'after_create',
                          DDL(create.format({'name': name})))
@@ -360,15 +394,17 @@ class Mapper:
                 event.listen(self.metadata,
                              'before_drop',
                              DDL(drop.format({'name': name})))
-        return model
+
+        return model, name
 
     def _get_tables(self, engine, create_drop=False):
         tables = []
         for table, eng in self.binds.items():
             if eng == engine:
-                model = self[table.key]
-                if create_drop and hasattr(model, '__create_sql__'):
-                    continue
+                if table.key in self._declarative_register:
+                    model = self[table.key]
+                    if create_drop and hasattr(model, '__create_sql__'):
+                        continue
                 tables.append(table)
         return tables
 
