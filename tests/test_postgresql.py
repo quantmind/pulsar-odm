@@ -1,8 +1,8 @@
-import tests
+from tests import base
 
 
-@tests.green
-class PostgreSqlTests(tests.TestCase, tests.MapperMixin):
+@base.green
+class PostgreSqlTests(base.TestCase, base.MapperMixin):
 
     @classmethod
     def url(cls):

@@ -6,8 +6,6 @@ from pulsar.apps.greenio import GreenPool
 
 import odm
 
-__test__ = False
-
 
 class Item(odm.Model):
     id = Column(Integer, primary_key=True)
