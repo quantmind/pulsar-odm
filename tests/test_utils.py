@@ -5,7 +5,7 @@ from sqlalchemy import Column, Integer, String, Table
 
 import odm
 
-from . import Employee, Engineer
+from tests import Employee, Engineer
 
 
 Model = odm.model_base('testutil')
