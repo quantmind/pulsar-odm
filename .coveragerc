@@ -1,6 +1,8 @@
 [run]
 source = odm
 concurrency = greenlet
+omit =
+    *odm/version.py
 
 [report]
 # Regexes for lines to exclude from consideration
