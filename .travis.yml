@@ -1,14 +1,11 @@
 language: python
 
-sudo: false
-
 python:
-  - "3.4.3"
   - "3.5.1"
 
 install:
   - pip install -r requirements-dev.txt
-  - python setup.py install
+  - pip install git+https://github.com/quantmind/pulsar.git
 
 addons:
   postgresql: "9.4"
@@ -22,11 +19,10 @@ before_script:
 
 script:
   - flake8
-  - rm -rf odm
-  - python -m runtests --coverage
+  - python setup.py test --coverage -q
 
 after_success:
-  - if [[ $TRAVIS_PYTHON_VERSION == '3.5.1' ]]; then python -m runtests --coveralls; fi
+  - if [[ $TRAVIS_PYTHON_VERSION == '3.5.1' ]]; then python setup.py test --coveralls; fi
 
 notifications:
   email: false

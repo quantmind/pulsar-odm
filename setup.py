@@ -12,7 +12,7 @@ def run():
         zip_safe=False,
         license='BSD',
         long_description=config.read('README.rst'),
-        packages=find_packages(exclude=('tests', 'tests.*')),
+        packages=find_packages(include=('odm', 'odm.*')),
         setup_requires=['pulsar'],
         install_requires=config.requirements('requirements.txt')[0],
         classifiers=[

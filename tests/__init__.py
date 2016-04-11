@@ -1,7 +1,6 @@
 import unittest
 import string
 import inspect
-import asyncio
 from enum import Enum
 from uuid import uuid4
 from functools import wraps
@@ -143,27 +142,24 @@ class TestCase(unittest.TestCase):
     mapper = None
 
     @classmethod
-    @asyncio.coroutine
-    def setUpClass(cls):
+    async def setUpClass(cls):
         # Create the application
         cls.dbs = {}
         cls.dbname = randomname(cls.prefixdb)
         cls.init_mapper = odm.Mapper(cls.url())
         cls.green_pool = GreenPool()
-        cls.mapper = yield from cls.green_pool.submit(
+        cls.mapper = await cls.green_pool.submit(
             cls.init_mapper.database_create, cls.dbname)
         cls.mapper.register_module(__name__)
-        yield from cls.green_pool.submit(cls.mapper.table_create)
+        await cls.green_pool.submit(cls.mapper.table_create)
 
     @classmethod
-    @asyncio.coroutine
-    def tearDownClass(cls):
+    async def tearDownClass(cls):
         # Create the application
         if cls.mapper:
             pool = cls.green_pool
-            yield from pool.submit(cls.mapper.close)
-            yield from pool.submit(cls.init_mapper.database_drop,
-                                   cls.dbname)
+            await pool.submit(cls.mapper.close)
+            await pool.submit(cls.init_mapper.database_drop, cls.dbname)
 
     @classmethod
     def url(cls):
