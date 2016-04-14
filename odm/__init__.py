@@ -4,7 +4,7 @@ from .version import get_version
 
 
 VERSION = (0, 5, 0, 'alpha', 0)
-__version__ = get_version(VERSION)
+__version__ = get_version(VERSION, __file__)
 
 
 if os.environ.get('package_info') != 'odm':

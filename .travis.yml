@@ -5,7 +5,6 @@ python:
 
 install:
   - pip install -r requirements-dev.txt
-  - pip install git+https://github.com/quantmind/pulsar.git
 
 addons:
   postgresql: "9.4"
