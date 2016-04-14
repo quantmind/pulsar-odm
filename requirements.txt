@@ -1,3 +1,3 @@
 greenlet
 sqlalchemy
--e git+https://github.com/quantmind/pulsar.git@master#egg=pulsar-master
+pulsar
