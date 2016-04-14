@@ -4,6 +4,8 @@ import odm_config as config
 
 
 def run():
+    requires, links = config.requirements('requirements.txt')
+
     meta = dict(
         name='pulsar-odm',
         author="Luca Sbardella",
@@ -14,7 +16,8 @@ def run():
         long_description=config.read('README.rst'),
         packages=find_packages(include=('odm', 'odm.*')),
         setup_requires=['pulsar'],
-        install_requires=config.requirements('requirements.txt')[0],
+        install_requires=requires,
+        dependency_links=links,
         classifiers=[
             'Development Status :: 4 - Beta',
             'Environment :: Web Environment',
