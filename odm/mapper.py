@@ -1,4 +1,3 @@
-import os
 import logging
 import sys
 from copy import copy
@@ -16,6 +15,7 @@ from sqlalchemy.schema import DDL
 from pulsar import ImproperlyConfigured
 
 from .strategy import create_engine
+from .utils import database_operation
 
 
 logger = logging.getLogger('pulsar.odm')
@@ -409,83 +409,21 @@ class Mapper:
         return tables
 
     def _database_all(self, engine):
-        all = self._get_callable(engine, 'database_all')
-        return all(engine)
+        return database_operation(engine, 'all')
 
     def _database_create(self, engine, database):
         """Create a new database and return a new url representing
         a connection to the new database
         """
         logger.info('Creating database "%s" in "%s"', database, engine)
-        create = self._get_callable(engine, 'database_create')
-        create(engine, database)
+        database_operation(engine, 'create', database)
         url = copy(engine.url)
         url.database = database
         return str(url)
 
     def _database_drop(self, engine, database):
         logger.info('dropping database "%s" from "%s"', database, engine)
-        drop = self._get_callable(engine, 'database_drop')
-        drop(engine, database)
-
-    def _get_callable(self, engine, method_name):
-        dialect = engine.dialect
-        if hasattr(dialect, method_name):
-            return getattr(dialect, method_name)
-        else:
-            scripts = engine_scripts[method_name]
-            if hasattr(scripts, dialect.name):
-                return getattr(scripts, dialect.name)
-            else:
-                return scripts.default
-
-
-class CreateDatabase:
-
-    def sqlite(self, engine, database):
-        pass
-
-    def default(self, engine, database):
-        conn = engine.connect()
-        # the connection will still be inside a transaction,
-        # so we have to end the open transaction with a commit
-        conn.execute("commit")
-        conn.execute('create database %s' % database)
-        conn.close()
-
-
-class DropDatabase:
-
-    def sqlite(self, engine, database):
-        try:
-            os.remove(database)
-        except FileNotFoundError:
-            pass
-
-    def default(self, engine, database):
-        conn = engine.connect()
-        conn.execute("commit")
-        conn.execute('drop database %s' % database)
-        conn.close()
-
-
-class AllDatabase:
-
-    def sqlite(self, engine):
-        database = engine.url.database
-        if os.path.isfile(database):
-            return [database]
-        else:
-            return []
-
-    def default(self, engine):
-        insp = inspect(engine)
-        return insp.get_schema_names()
-
-
-engine_scripts = {'database_create': CreateDatabase(),
-                  'database_drop': DropDatabase(),
-                  'database_all': AllDatabase()}
+        database_operation(engine, 'drop', database)
 
 
 class OdmSession(Session):

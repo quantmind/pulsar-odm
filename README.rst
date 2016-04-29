@@ -87,12 +87,9 @@ Once the result of the execution is ready, the execution switches back to the or
 Testing
 ==========
 
-To run tests, create a new role and database in postgresql::
+To run tests, create a new role and database, for postgresql::
 
-    CREATE ROLE odm WITH PASSWORD 'odmtest';
-    ALTER ROLE odm CREATEDB LOGIN;
-    CREATE DATABASE odmtests;
-    GRANT ALL PRIVILEGES ON DATABASE odmtests to odm;
+    psql -a -f tests/db.sql
 
 
 .. _`Luca Sbardella`: http://lucasbardella.com
