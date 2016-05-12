@@ -378,6 +378,9 @@ class Mapper:
                 base = self._declarative_register[base]
         else:
             base = self._base_declarative
+
+        #
+        # Create SqlAlchemy Model
         model = meta(model_name, (model, base), {})
         create = getattr(model, '__create_sql__', None)
         name = model_name.lower()
