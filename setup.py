@@ -71,7 +71,7 @@ def run():
         license='BSD',
         long_description=read('README.rst'),
         packages=find_packages(include=('odm', 'odm.*')),
-        setup_requires=['pulsar'],
+        setup_requires=['pulsar', 'wheel'],
         install_requires=requires,
         dependency_links=links,
         classifiers=[
