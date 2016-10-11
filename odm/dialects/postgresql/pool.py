@@ -43,13 +43,15 @@ class GreenletPool(pool.Pool):
 
     def recreate(self):
         self.logger.info("Pool recreating")
-        return self.__class__(self._creator, recycle=self._recycle,
+        return self.__class__(self._creator,
+                              pool_size=self.max_size,
+                              recycle=self._recycle,
                               echo=self.echo,
                               logging_name=self._orig_logging_name,
                               use_threadlocal=self._use_threadlocal,
                               reset_on_return=self._reset_on_return,
                               _dispatch=self.dispatch,
-                              _dialect=self._dialect)
+                              dialect=self._dialect)
 
     def _do_return_conn(self, conn):
         self._available_connections.add(conn)
