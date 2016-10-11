@@ -35,6 +35,9 @@ Currently only one dialect is implemented and tested:
 
 * postgres+green, postgresql dialect with psycopg2_ and greenlet_
 
+.. contents:: **CONTENTS**
+
+
 Usage
 ==========
 
@@ -98,6 +101,15 @@ Testing
 To run tests, create a new role and database, for postgresql::
 
     psql -a -f tests/db.sql
+
+
+Changelog
+============
+
+* `Version 0.6 <https://github.com/quantmind/pulsar-odm/blob/master/docs/history/0.6.md>`_
+* `Version 0.5 <https://github.com/quantmind/pulsar-odm/blob/master/docs/history/0.5.md>`_
+* `Version 0.4 <https://github.com/quantmind/pulsar-odm/blob/master/docs/history/0.4.md>`_
+* `Versions pre 0.4 <https://github.com/quantmind/pulsar-odm/blob/master/docs/history/pre0.4.md>`_
 
 
 .. _`Luca Sbardella`: http://lucasbardella.com
