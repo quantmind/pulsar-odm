@@ -1,15 +1,17 @@
 {
+    "python": {
+        "odm_version": "odm.__version__"
+    },
     "github": {
         "odm": {
-            "python_module": "odm",
-            "version": "odm.__version__",
+            "version": "{{ odm_version }}",
             "release_notes": "docs/history"
         }
     },
     "tasks": {
         "release": {
             "description": "make a new release to github",
-            "command": ["github:odm"]
+            "command": ["python", "github:odm"]
         }
     }
 }

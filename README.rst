@@ -1,16 +1,24 @@
 Pulsar Object data mapper
 ===============================
 
+:Badges: |license|  |pyversions| |status| |pypiversion|
 :Master CI: |master-build|_ |coverage-master|
-:Dev CI: |dev-build|_ |coverage-dev|
 :Downloads: http://pypi.python.org/pypi/pulsar-odm
 :Source: https://github.com/quantmind/pulsar-odm
 :Mailing list: `google user group`_
 :Design by: `Quantmind`_ and `Luca Sbardella`_
-:Platforms: Linux, OSX, Windows. Python 3.4 and above
+:Platforms: Linux, OSX, Windows. Python 3.5 and above
 :Keywords: sql, sqlalchemy, asynchronous, concurrency, greenlet
 
 
+.. |pypiversion| image:: https://badge.fury.io/py/pulsar-odm.svg
+  :target: https://pypi.python.org/pypi/pulsar-odm
+.. |pyversions| image:: https://img.shields.io/pypi/pyversions/pulsar-odm.svg
+  :target: https://pypi.python.org/pypi/pulsar-odm
+.. |license| image:: https://img.shields.io/pypi/l/pulsar-odm.svg
+  :target: https://pypi.python.org/pypi/pulsar-odm
+.. |status| image:: https://img.shields.io/pypi/status/pulsar-odm.svg
+  :target: https://pypi.python.org/pypi/pulsar-odm
 .. |master-build| image:: https://travis-ci.org/quantmind/pulsar-odm.svg?branch=master
 .. _master-build: http://travis-ci.org/quantmind/pulsar-odm
 .. |dev-build| image:: https://travis-ci.org/quantmind/pulsar-odm.svg?branch=dev
