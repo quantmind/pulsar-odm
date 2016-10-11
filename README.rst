@@ -1,6 +1,3 @@
-Pulsar Object data mapper
-===============================
-
 :Badges: |license|  |pyversions| |status| |pypiversion|
 :Master CI: |master-build|_ |coverage-master|
 :Downloads: http://pypi.python.org/pypi/pulsar-odm
@@ -8,7 +5,7 @@ Pulsar Object data mapper
 :Mailing list: `google user group`_
 :Design by: `Quantmind`_ and `Luca Sbardella`_
 :Platforms: Linux, OSX, Windows. Python 3.5 and above
-:Keywords: sql, sqlalchemy, asynchronous, concurrency, greenlet
+:Keywords: sql, sqlalchemy, asynchronous, asyncio, concurrency, greenlet
 
 
 .. |pypiversion| image:: https://badge.fury.io/py/pulsar-odm.svg
