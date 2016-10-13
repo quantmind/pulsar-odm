@@ -141,7 +141,9 @@ class TestCase(unittest.TestCase):
         cls.init_mapper = odm.Mapper(cls.url())
         cls.green_pool = GreenPool()
         cls.mapper = await cls.green_pool.submit(
-            cls.init_mapper.database_create, cls.dbname)
+            cls.init_mapper.database_create,
+            cls.dbname
+        )
         cls.mapper.register_module(__name__)
         await cls.green_pool.submit(cls.mapper.table_create)
 
@@ -248,3 +250,8 @@ class MapperMixin:
         with mapper.begin() as session:
             ptasks = session.query(mapper.personaltasks).all()
             self.assertTrue(len(ptasks) >= 2)
+
+    def test_database_exist(self):
+        binds = self.mapper.database_exist()
+        self.assertTrue(binds)
+        self.assertTrue(binds['default'])

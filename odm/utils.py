@@ -1,6 +1,5 @@
 import os
 from inspect import isclass
-from copy import copy
 
 import sqlalchemy as sa
 from sqlalchemy import inspect
@@ -100,63 +99,35 @@ class AllDatabase:
 
 
 class ExistDatabase:
+    """Check if a database exists"""
 
-    def default(self, engine, database):
-        """Check if a database exists.
-
-        :param url: A SQLAlchemy engine URL.
-
-        Performs backend-specific testing to quickly determine if a database
-        exists on the server. ::
-
-            database_exists('postgres://postgres@localhost/name')  #=> False
-            create_database('postgres://postgres@localhost/name')
-            database_exists('postgres://postgres@localhost/name')  #=> True
-
-        Supports checking against a constructed URL as well. ::
-
-            engine = create_engine('postgres://postgres@localhost/name')
-            database_exists(engine.url)  #=> False
-            create_database(engine.url)
-            database_exists(engine.url)  #=> True
-
-        """
-        url = copy(engine.url)
-        if url.drivername.startswith('postgresql'):
-            url.database = 'template1'
+    def sqlite(self, engine):
+        database = engine.url.database
+        if database:
+            return database == ':memory:' or os.path.exists(database)
         else:
-            url.database = None
+            # The default SQLAlchemy database is in memory,
+            # and :memory is not required, thus we should
+            # support that use-case
+            return True
 
-        engine = sa.create_engine(url)
+    def postgresql(self, engine):
+        database = engine.url.database
+        text = "SELECT 1 FROM pg_database WHERE datname='%s'" % database
+        return bool(engine.execute(text).scalar())
 
-        if engine.dialect.name == 'postgresql':
-            text = "SELECT 1 FROM pg_database WHERE datname='%s'" % database
-            return bool(engine.execute(text).scalar())
+    def mysql(self, engine):
+        database = engine.url.database
+        text = ("SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA "
+                "WHERE SCHEMA_NAME = '%s'" % database)
+        return bool(engine.execute(text).scalar())
 
-        elif engine.dialect.name == 'mysql':
-            text = ("SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA "
-                    "WHERE SCHEMA_NAME = '%s'" % database)
-            return bool(engine.execute(text).scalar())
-
-        elif engine.dialect.name == 'sqlite':
-            if database:
-                return database == ':memory:' or os.path.exists(database)
-            else:
-                # The default SQLAlchemy database is in memory,
-                # and :memory is not required, thus we should
-                # support that use-case
-                return True
-
-        else:
-            text = 'SELECT 1'
-            try:
-                url.database = database
-                engine = sa.create_engine(url)
-                engine.execute(text)
-                return True
-
-            except (ProgrammingError, OperationalError):
-                return False
+    def default(self, engine):
+        try:
+            engine.execute('SELECT 1')
+            return True
+        except (ProgrammingError, OperationalError):
+            return False
 
 
 engine_scripts = {'database_exists': ExistDatabase(),

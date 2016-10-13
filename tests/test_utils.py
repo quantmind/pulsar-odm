@@ -29,12 +29,12 @@ class TestUtils(unittest.TestCase):
         Model = odm.model_base('foooo')
         self.assertTrue(isclass(Model))
         self.assertTrue(Model.__table_args__)
-        self.assertEqual(Model.__table_args__['info'],
+        self.assertEqual(Model.__table_args__[0]['info'],
                          {'bind_label': 'foooo'})
 
     def test_table_args(self):
         self.assertTrue(Engineer.__table_args__)
-        self.assertTrue(Engineer.__table_args__['info'])
+        self.assertTrue(Engineer.__table_args__[0]['info'])
 
     def test_table(self):
         mapper = odm.Mapper('sqlite:///')

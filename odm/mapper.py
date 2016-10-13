@@ -52,44 +52,47 @@ class BaseModel(metaclass=OdmMeta):
     __odm_abstract__ = True
 
     @declared_attr
-    def __tablename__(self):
-        return self.__name__.lower()
+    def __tablename__(cls):
+        return cls.__name__.lower()
 
     @classmethod
     def create_table(cls, name, *columns, **kwargs):
-        kwargs = table_args(cls, **kwargs)
-        table = Table(name, MetaData(), *columns, **kwargs)
+        targs = table_args(cls, **kwargs)
+        args, kwargs = targs[:-1], targs[-1]
+        table = Table(name, MetaData(), *columns, *args, **kwargs)
         return table
 
 
-def table_args(args, **kwargs):
-    if hasattr(args, '__table_args__'):
-        args = args.__table_args__
-        if isinstance(args, tuple):
-            args = args[-1]
-        args = args.copy()
+def table_args(*args, **kwargs):
+    targs = ()
+    tkwargs = {}
+
+    if args:
+        if hasattr(args[0], '__table_args__'):
+            targs = args[0].__table_args__
+            targs, tkwargs = targs[:-1], targs[-1].copy()
+            args = args[1:]
+
+        targs += args
 
     for key, value in kwargs.items():
-        if key == 'info' and key in args:
-            new_value = args['info'].copy()
+        if isinstance(value, dict) and key in tkwargs:
+            new_value = tkwargs[key].copy()
             new_value.update(value)
             value = new_value
-        args[key] = value
+        tkwargs[key] = value
 
-    return args
+    return targs + (tkwargs,)
 
 
 def model_base(bind_label=None, info=None):
     """Create a base declarative class
     """
     Model = type('Model', (BaseModel,), {'__odm_abstract__': True})
+    info = {}
+    Model.__table_args__ = table_args(info=info)
     if bind_label:
-        args = getattr(Model, '__table_args__', {})
-        if 'info' not in args:
-            args['info'] = {}
-        args['info']['bind_label'] = bind_label
-        Model.__table_args__ = args
-
+        info['bind_label'] = bind_label
     return Model
 
 
@@ -245,8 +248,9 @@ class Mapper:
     def create_table(self, name, *columns, **kwargs):
         """Create a new table with the same metadata and info
         """
-        kwargs = table_args({}, **kwargs)
-        return Table(name, self.metadata, *columns, **kwargs)
+        targs = table_args(**kwargs)
+        args, kwargs = targs[:-1], targs[-1]
+        return Table(name, self.metadata, *columns, *args, **kwargs)
 
     def database_create(self, database, **params):
         """Create databases for each engine and return a new :class:`.Mapper`.
@@ -260,6 +264,15 @@ class Mapper:
             key = key if key else 'default'
             binds[key] = self._database_create(engine, dbname)
         return self.copy(binds)
+
+    def database_exist(self):
+        """Create databases for each engine and return a new :class:`.Mapper`.
+        """
+        binds = {}
+        for key, engine in self.keys_engines():
+            key = key if key else 'default'
+            binds[key] = self._database_exist(engine)
+        return binds
 
     def database_all(self):
         """Return a dictionary mapping engines with databases
@@ -427,6 +440,9 @@ class Mapper:
     def _database_drop(self, engine, database):
         logger.info('dropping database "%s" from "%s"', database, engine)
         database_operation(engine, 'drop', database)
+
+    def _database_exist(self, engine):
+        return database_operation(engine, 'exists')
 
 
 class OdmSession(Session):
