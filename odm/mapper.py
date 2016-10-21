@@ -5,7 +5,7 @@ from inspect import getmodule
 from contextlib import contextmanager
 from collections import OrderedDict
 
-from sqlalchemy import MetaData, Table, event, inspect
+from sqlalchemy import MetaData, Table, event
 from sqlalchemy.ext.declarative.api import (declarative_base, declared_attr,
                                             _as_declarative, _add_attribute)
 from sqlalchemy.orm.session import Session
@@ -453,68 +453,5 @@ class OdmSession(Session):
     """
 
     def __init__(self, mapper, **options):
-        #: The application that this session belongs to.
         self.mapper = mapper
-        self.register()
         super().__init__(**options)
-
-    def register(self):
-        if not hasattr(self, '_model_changes'):
-            self._model_changes = {}
-
-        event.listen(self, 'before_flush', self.record_ops)
-        event.listen(self, 'before_commit', self.record_ops)
-        event.listen(self, 'before_commit', self.before_commit)
-        event.listen(self, 'after_commit', self.after_commit)
-        event.listen(self, 'after_rollback', self.after_rollback)
-
-    @classmethod
-    def signal(cls, session, changes, event):
-        """Signal changes on session
-        """
-        pass
-
-    @classmethod
-    def record_ops(cls, session, flush_context=None, instances=None):
-        try:
-            d = session._model_changes
-        except AttributeError:
-            return
-
-        for targets, operation in ((session.new, 'insert'),
-                                   (session.dirty, 'update'),
-                                   (session.deleted, 'delete')):
-            for target in targets:
-                state = inspect(target)
-                key = state.identity_key if state.has_identity else id(target)
-                d[key] = (target, operation)
-
-    @classmethod
-    def before_commit(cls, session):
-        try:
-            d = session._model_changes
-        except AttributeError:
-            return
-
-        if d:
-            cls.signal(session, d, 'on_before_commit')
-
-    @classmethod
-    def after_commit(cls, session):
-        try:
-            d = session._model_changes
-        except AttributeError:
-            return
-
-        if d:
-            cls.signal(session, d, 'on_after_commit')
-            d.clear()
-
-    @classmethod
-    def after_rollback(cls, session):
-        try:
-            d = session._model_changes
-        except AttributeError:
-            return
-
-        d.clear()
