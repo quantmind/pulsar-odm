@@ -304,7 +304,10 @@ class Mapper:
         for engine in self.engines():
             tables = self._get_tables(engine, create_drop=True)
             logger.info('Create all tables for %s', engine)
-            self.metadata.create_all(engine, tables=tables)
+            try:
+                self.metadata.create_all(engine, tables=tables)
+            except Exception as exc:
+                raise
 
     def table_drop(self):
         """Drops all tables.
@@ -446,11 +449,6 @@ class Mapper:
 
 
 class OdmSession(Session):
-    """The sql alchemy session that lux uses.
-
-    It extends the default session system with bind selection and
-    modification tracking.
-    """
 
     def __init__(self, mapper, **options):
         self.mapper = mapper
