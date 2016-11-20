@@ -3,7 +3,7 @@ import os
 from .version import get_version
 
 
-VERSION = (0, 6, 2, 'alpha', 0)
+VERSION = (0, 6, 2, 'final', 0)
 __version__ = get_version(VERSION, __file__)
 
 
