@@ -1,4 +1,4 @@
 greenlet
 sqlalchemy
 psycopg2
-pulsar
+pulsar >= 2.0.0

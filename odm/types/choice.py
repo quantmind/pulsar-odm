@@ -3,7 +3,7 @@ from enum import Enum
 
 from sqlalchemy import types
 
-from pulsar import ImproperlyConfigured
+from pulsar.api import ImproperlyConfigured
 
 
 class ScalarCoercible(object):

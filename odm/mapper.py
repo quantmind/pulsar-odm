@@ -12,7 +12,7 @@ from sqlalchemy.orm.session import Session
 from sqlalchemy.orm import object_session
 from sqlalchemy.schema import DDL
 
-from pulsar import ImproperlyConfigured
+from pulsar.api import ImproperlyConfigured
 
 from .strategy import create_engine
 from .utils import database_operation
