@@ -6,7 +6,7 @@ from uuid import uuid4
 from functools import wraps
 from datetime import datetime
 
-import odm
+from odm import mapper
 from odm.types import JSONType, UUIDType, ChoiceType
 
 from sqlalchemy.orm import relationship
@@ -16,7 +16,7 @@ from pulsar.utils.string import random_string
 from pulsar.apps.greenio import GreenPool
 
 
-Model = odm.model_base('foooo')
+Model = mapper.model_base('foooo')
 
 
 class TaskType(Enum):
@@ -65,7 +65,7 @@ class Employee(Model):
     type = Column(String(50))
     sex = Column(ChoiceType({'female': 'female', 'male': 'male'}))
 
-    @odm.declared_attr
+    @mapper.declared_attr
     def __mapper_args__(cls):
         name = cls.__name__.lower()
         if cls.__name__ == 'Employee':
@@ -82,7 +82,7 @@ class Employee(Model):
 class Engineer(Employee):
     engineer_name = Column(String(30))
 
-    @odm.declared_attr
+    @mapper.declared_attr
     def id(self):
         return Column(Integer, ForeignKey('employee.id'), primary_key=True)
 
@@ -97,11 +97,11 @@ class Task(Model):
     type = Column(ChoiceType(TaskType, impl=Integer),
                   default=TaskType.work)
 
-    @odm.declared_attr
+    @mapper.declared_attr
     def employee_id(cls):
         return Column(Integer, ForeignKey('employee.id'))
 
-    @odm.declared_attr
+    @mapper.declared_attr
     def employee(cls):
         return relationship('Employee', backref='tasks')
 
@@ -138,7 +138,7 @@ class TestCase(unittest.TestCase):
         # Create the application
         cls.dbs = {}
         cls.dbname = randomname(cls.prefixdb)
-        cls.init_mapper = odm.Mapper(cls.url())
+        cls.init_mapper = mapper.Mapper(cls.url())
         cls.green_pool = GreenPool()
         cls.mapper = await cls.green_pool.submit(
             cls.init_mapper.database_create,

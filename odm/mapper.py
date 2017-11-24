@@ -5,6 +5,9 @@ from inspect import getmodule
 from contextlib import contextmanager
 from collections import OrderedDict
 
+import sqlalchemy
+from sqlalchemy.engine import url
+from sqlalchemy.engine.strategies import PlainEngineStrategy
 from sqlalchemy import MetaData, Table, event
 from sqlalchemy.ext.declarative.api import (declarative_base, declared_attr,
                                             _as_declarative, _add_attribute)
@@ -14,11 +17,34 @@ from sqlalchemy.schema import DDL
 
 from pulsar.api import ImproperlyConfigured
 
-from .strategy import create_engine
 from .utils import database_operation
+from . import dialects  # noqa
 
 
 logger = logging.getLogger('pulsar.odm')
+
+
+def create_engine(*args, **kwargs):
+    kwargs.setdefault('strategy', 'odm')
+    return sqlalchemy.create_engine(*args, **kwargs)
+
+
+class OdmEngineStrategy(PlainEngineStrategy):
+    name = 'odm'
+
+    def create(self, name_or_url, **kwargs):
+        # create url.URL object
+        u = url.make_url(name_or_url)
+
+        if 'pool_size' in u.query:
+            kwargs['pool_size'] = int(u.query.pop('pool_size'))
+        if 'pool_timeout' in u.query:
+            kwargs['pool_timeout'] = float(u.query.pop('pool_timeout'))
+
+        return super().create(name_or_url, **kwargs)
+
+
+OdmEngineStrategy()
 
 
 class OdmMeta(type):
@@ -194,7 +220,7 @@ class Mapper:
     def copy(self, binds):
         return self.__class__(binds)
 
-    def register(self, model):
+    def register(self, model, **attr):
         """Register a model or a table with this mapper
 
         :param model: a table or a :class:`.BaseModel` class
@@ -202,7 +228,7 @@ class Mapper:
         """
         metadata = self.metadata
         if not isinstance(model, Table):
-            model_name = self._create_model(model)
+            model_name = self._create_model(model, **attr)
             if not model_name:
                 return
             model, name = model_name

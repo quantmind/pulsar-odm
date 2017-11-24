@@ -3,12 +3,12 @@ from inspect import isclass, getmodule
 
 from sqlalchemy import Column, Integer, String, Table
 
-import odm
+from odm import mapper
 
 from tests.base import Employee, Engineer
 
 
-Model = odm.model_base('testutil')
+Model = mapper.model_base('testutil')
 
 
 class Foo(Model):
@@ -26,7 +26,7 @@ table = Model.create_table(
 class TestUtils(unittest.TestCase):
 
     def test_model_base(self):
-        Model = odm.model_base('foooo')
+        Model = mapper.model_base('foooo')
         self.assertTrue(isclass(Model))
         self.assertTrue(Model.__table_args__)
         self.assertEqual(Model.__table_args__[0]['info'],
@@ -37,48 +37,48 @@ class TestUtils(unittest.TestCase):
         self.assertTrue(Engineer.__table_args__[0]['info'])
 
     def test_table(self):
-        mapper = odm.Mapper('sqlite:///')
-        # Model = odm.model_base('custom')
-        table = mapper.create_table('user', Column('name', String(80)))
+        mp = mapper.Mapper('sqlite:///')
+        # Model = mapper.model_base('custom')
+        table = mp.create_table('user', Column('name', String(80)))
         self.assertIsInstance(table, Table)
         # self.assertEqual(table.info['bind_label'], 'custom')
 
     def test_model_sandbox(self):
-        mapper = odm.Mapper('sqlite:///')
-        model = mapper.register(Foo)
-        self.assertEqual(model, mapper.foo)
-        self.assertEqual(mapper.metadata, model.metadata)
+        mp = mapper.Mapper('sqlite:///')
+        model = mp.register(Foo)
+        self.assertEqual(model, mp.foo)
+        self.assertEqual(mp.metadata, model.metadata)
         self.assertTrue(issubclass(model, Foo))
 
     def test_register_polimorfic(self):
-        mapper = odm.Mapper('sqlite:///')
-        mapper.register(Employee)
-        mapper.register(Engineer)
+        mp = mapper.Mapper('sqlite:///')
+        mp.register(Employee)
+        mp.register(Engineer)
 
     def test_getitem(self):
-        mapper = odm.Mapper('sqlite:///')
-        model = mapper.register(Employee)
-        self.assertEqual(mapper['employee'], model)
-        self.assertEqual(mapper.employee, model)
-        self.assertRaises(AttributeError, lambda: mapper.foo)
+        mp = mapper.Mapper('sqlite:///')
+        model = mp.register(Employee)
+        self.assertEqual(mp['employee'], model)
+        self.assertEqual(mp.employee, model)
+        self.assertRaises(AttributeError, lambda: mp.foo)
 
     def test_register_module(self):
-        mapper = odm.Mapper('sqlite:///')
-        mapper.register_module(getmodule(self))
-        self.assertTrue(mapper.foo)
-        self.assertRaises(AttributeError, lambda: mapper.bla)
-        self.assertEqual(len(mapper.metadata.tables), 2)
-        bla = mapper.metadata.tables['bla']
+        mp = mapper.Mapper('sqlite:///')
+        mp.register_module(getmodule(self))
+        self.assertTrue(mp.foo)
+        self.assertRaises(AttributeError, lambda: mp.bla)
+        self.assertEqual(len(mp.metadata.tables), 2)
+        bla = mp.metadata.tables['bla']
         self.assertTrue(bla.key, 'bla')
 
     def test_no_binds(self):
-        self.assertRaises(odm.ImproperlyConfigured, odm.Mapper, None)
+        self.assertRaises(mapper.ImproperlyConfigured, mapper.Mapper, None)
 
     def test_copy_modules(self):
         module = getmodule(self)
-        models = odm.get_models(module)
-        odm.copy_models(module, __name__)
-        new_models = odm.get_models(module)
+        models = mapper.get_models(module)
+        mapper.copy_models(module, __name__)
+        new_models = mapper.get_models(module)
         self.assertIsInstance(new_models.pop('bla'), Table)
         self.assertTrue(new_models)
         self.assertNotEqual(id(models), id(new_models))

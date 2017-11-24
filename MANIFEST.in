@@ -1,6 +1,6 @@
-include MANIFEST.in
 include LICENSE
 include README.rst
-include requirements.txt
-include requirements-dev.txt
-include odm_config.py
+include Makefile
+graft odm
+graft requirements
+graft tests

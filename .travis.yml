@@ -1,11 +1,11 @@
 language: python
 
 python:
-  - 3.5.2
-  - 3.6-dev
+  - 3.5.4
+  - 3.6.3
 
 install:
-  - pip install -r requirements-dev.txt
+  - ci/install.sh
 
 addons:
   postgresql: "9.4"
@@ -14,11 +14,11 @@ before_script:
   - psql -U postgres -f tests/db.sql
 
 script:
-  - flake8
-  - python setup.py test --coverage -q
+  - make test
+  - if [[ $TRAVIS_PYTHON_VERSION == 3.6.3 ]]; then make coverage; fi
 
 after_success:
-  - if [[ $TRAVIS_PYTHON_VERSION == '3.5.2' ]]; then python setup.py test --coveralls; fi
+  - if [[ $TRAVIS_PYTHON_VERSION == 3.6.3 ]]; then codecov; fi
 
 notifications:
   email: false

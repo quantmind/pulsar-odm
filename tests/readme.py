@@ -4,10 +4,10 @@ from sqlalchemy import Integer, Column, String, DateTime, Boolean
 
 from pulsar.apps.greenio import GreenPool
 
-import odm
+from odm import mapper
 
 
-class Item(odm.Model):
+class Item(mapper.Model):
     id = Column(Integer, primary_key=True)
     subject = Column(String(250))
     done = Column(Boolean, default=False)
@@ -29,7 +29,9 @@ def example(mp):
 
 def run():
     pool = GreenPool()
-    mp = odm.Mapper('postgresql+green://odm:odmtest@127.0.0.1:5432/odmtests')
+    mp = mapper.Mapper(
+        'postgresql+green://odm:odmtest@127.0.0.1:5432/odmtests'
+    )
     mp.register(Item)
     task = pool._loop.run_until_complete(pool.submit(example, mp))
     print(task)
