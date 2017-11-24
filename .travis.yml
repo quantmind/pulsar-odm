@@ -24,7 +24,7 @@ script:
 
 after_success:
   - if [ $TRAVIS_PYTHON_VERSION == $PYMAIN ]; then codecov; fi
-  - if [[ $TRAVIS_BRANCH == 'release'] && [ $TRAVIS_PYTHON_VERSION == $PYMAIN ]]; then ci/release.sh; fi
+  - if [ $TRAVIS_BRANCH == 'release'] && [ $TRAVIS_PYTHON_VERSION == $PYMAIN ]; then ci/release.sh; fi
 
 notifications:
   email: false
