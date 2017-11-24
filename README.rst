@@ -1,5 +1,5 @@
 :Badges: |license|  |pyversions| |status| |pypiversion|
-:Master CI: |master-build|_ |coverage-master|
+:Master CI: |travis| |coverage|
 :Downloads: http://pypi.python.org/pypi/pulsar-odm
 :Source: https://github.com/quantmind/pulsar-odm
 :Mailing list: `google user group`_
@@ -16,14 +16,10 @@
   :target: https://pypi.python.org/pypi/pulsar-odm
 .. |status| image:: https://img.shields.io/pypi/status/pulsar-odm.svg
   :target: https://pypi.python.org/pypi/pulsar-odm
-.. |master-build| image:: https://travis-ci.org/quantmind/pulsar-odm.svg?branch=master
-.. _master-build: http://travis-ci.org/quantmind/pulsar-odm
-.. |dev-build| image:: https://travis-ci.org/quantmind/pulsar-odm.svg?branch=dev
-.. _dev-build: http://travis-ci.org/quantmind/pulsar-odm
-.. |coverage-master| image:: https://coveralls.io/repos/quantmind/pulsar-odm/badge.svg
-  :target: https://coveralls.io/r/quantmind/pulsar-odm?branch=master
-.. |coverage-dev| image:: https://img.shields.io/coveralls/quantmind/pulsar-odm/dev.svg
-  :target: https://coveralls.io/r/quantmind/pulsar-odm?branch=dev
+.. |travis| image:: https://travis-ci.org/quantmind/pulsar-odm.svg?branch=master
+  :target: http://travis-ci.org/quantmind/pulsar-odm
+.. |coverage| image:: https://codecov.io/gh/quantmind/pulsar-odm/branch/master/graph/badge.svg
+  :target: https://codecov.io/gh/quantmind/pulsar-odm
 
 Pulsar-odm is build on top of pulsar_, sqlalchemy_ and greenlet_ libraries to
 provide an implicit asynchronous object data mapper to use with code written
@@ -112,7 +108,7 @@ Changelog
 .. _`Luca Sbardella`: http://lucasbardella.com
 .. _`Quantmind`: http://quantmind.com
 .. _`google user group`: https://groups.google.com/forum/?fromgroups#!forum/python-pulsar
-.. _pulsar: http://pythonhosted.org/pulsar/
+.. _pulsar: https://docs.pulsarweb.org
 .. _sqlalchemy: http://www.sqlalchemy.org/
 .. _greenlet: https://greenlet.readthedocs.org/en/latest/
 .. _asyncio: https://docs.python.org/3/library/asyncio.html
