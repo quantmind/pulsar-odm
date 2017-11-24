@@ -4,8 +4,6 @@ language: python
 env:
     global:
         - PYMAIN=3.6.3
-        - MAKE_COVER=[ $TRAVIS_PYTHON_VERSION == 3.6.3 ]
-        - RELEASE=[[ $TRAVIS_BRANCH == 'release'] && [ $TRAVIS_PYTHON_VERSION == $PYMAIN ]]
 
 python:
   - 3.5.4
@@ -22,11 +20,11 @@ before_script:
 
 script:
   - make test
-  - if [[ MAKE_COVER ]]; then make coverage; fi
+  - if [ $TRAVIS_PYTHON_VERSION == $PYMAIN ]; then make coverage; fi
 
 after_success:
   - if [ $TRAVIS_PYTHON_VERSION == $PYMAIN ]; then codecov; fi
-  - if [ $RELEASE ]; then ci/release.sh; fi
+  - if [[ $TRAVIS_BRANCH == 'release'] && [ $TRAVIS_PYTHON_VERSION == $PYMAIN ]]; then ci/release.sh; fi
 
 notifications:
   email: false
