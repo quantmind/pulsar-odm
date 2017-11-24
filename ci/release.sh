@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+set -e -x
+
+
 codecov
 
 if [[ $TRAVIS_BRANCH == 'release' ]]; then
