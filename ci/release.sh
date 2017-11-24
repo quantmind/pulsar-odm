@@ -2,8 +2,7 @@
 
 codecov
 
-if [$TRAVIS_BRANCH == 'release']
-then
+if [[ $TRAVIS_BRANCH == 'release' ]]; then
     VERSION="$(python setup.py --version)"
     echo ${VERSION}
     echo PyPI source release
